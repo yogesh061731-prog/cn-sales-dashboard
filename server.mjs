@@ -30,7 +30,7 @@ function parseCsv(text) {
 
 function clean(v) { return String(v ?? "").trim(); }
 function norm(v) { return clean(v).toLowerCase().replace(/\s+/g, " "); }
-function ckey(v) { return norm(v).replace(/[^a-z ]/g, "").split(" ").filter(Boolean)[0] || norm(v); }
+function ckey(v) { return norm(v).replace(/[^a-z ]/g, "").trim(); }
 
 function parseDate(value) {
   const raw = clean(value);
@@ -125,7 +125,7 @@ async function loadTargets() {
     const displayName = clean(row[3]);
     // Column index 9 = "TL Updated Target", index 4 = base target
     // Use TL Updated Target (col 9) if available, else base target (col 4)
-    const tlTarget = Number(clean(row[9] ?? ""));
+   const tlTarget = Number(clean(row[10] ?? ""));
     const baseTarget = Number(clean(row[4] ?? ""));
     const target = Number.isFinite(tlTarget) && tlTarget > 0 ? tlTarget : (Number.isFinite(baseTarget) ? baseTarget : 0);
     if (month && manager && key) {
