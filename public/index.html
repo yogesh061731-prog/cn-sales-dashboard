@@ -3,7 +3,19 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>CN Sales Dashboard</title>
+<title>Yogesh's Sales Desk</title>
+<style>
+#loginScreen{position:fixed;inset:0;background:#101828;display:flex;align-items:center;justify-content:center;z-index:9999}
+.login-box{background:#1a2235;border:1px solid #2a3347;border-radius:16px;padding:40px 36px;width:100%;max-width:380px;text-align:center}
+.login-logo{width:52px;height:52px;background:#e53935;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:18px;color:#fff;margin:0 auto 20px}
+.login-title{font-size:22px;font-weight:700;color:#fff;margin-bottom:6px}
+.login-sub{font-size:13px;color:#8090a8;margin-bottom:28px}
+.login-input{width:100%;height:44px;background:#0d1626;border:1px solid #2a3347;border-radius:8px;color:#fff;font-size:15px;padding:0 16px;outline:none;letter-spacing:2px;text-align:center}
+.login-input:focus{border-color:#e53935}
+.login-btn{width:100%;height:44px;background:#e53935;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px}
+.login-btn:hover{background:#c62828}
+.login-err{color:#f87171;font-size:13px;margin-top:10px;min-height:20px}
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
@@ -97,7 +109,18 @@ td.r,th.r{text-align:right}
 </aside>
 
 <main class="content">
-  <div id="loadingState" class="loading"><div class="spinner"></div> Fetching from Google Sheet…</div>
+  <div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">CN</div>
+    <div class="login-title">Sales BI</div>
+    <div class="login-sub">Coding Ninjas · Yogesh's Sales Desk</div>
+    <input class="login-input" id="pwdInput" type="password" placeholder="Enter password" maxlength="20"/>
+    <button class="login-btn" onclick="checkPwd()">Unlock Dashboard</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="loadingState" class="loading"><div class="spinner"></div> Fetching from Google Sheet…</div>
   <div id="errorState" style="display:none"></div>
   <div id="dashContent" style="display:none">
 
@@ -304,7 +327,7 @@ function renderAll(months){
   const sel=document.getElementById('monthSelect');
   const allMonths=months||[...new Set(state.mom.map(r=>r.month))].sort();
   sel.innerHTML=allMonths.slice().reverse().map(m=>`<option value="${m}"${m===state.month?' selected':''}>${mlabel(m)}</option>`).join('');
-  document.getElementById('eyebrow').textContent=`Senior Manager · ${mlabel(state.month)}`;
+  document.getElementById('eyebrow').textContent=`Sales Desk · ${mlabel(state.month)}`;
 
   const mMom=state.mom.filter(r=>r.month===state.month);
   const mBde=state.bde.filter(r=>r.month===state.month);
@@ -449,9 +472,30 @@ function renderTrend(momRows){
   `;
 }
 
+function checkPwd(){
+  const val=document.getElementById('pwdInput').value;
+  if(val==='CN2026'){
+    document.getElementById('loginScreen').style.display='none';
+    sessionStorage.setItem('cn_auth','1');
+    loadAll();
+  } else {
+    document.getElementById('loginErr').textContent='Incorrect password. Try again.';
+    document.getElementById('pwdInput').value='';
+    document.getElementById('pwdInput').focus();
+  }
+}
+document.getElementById('pwdInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkPwd();});
+
 function scrollTo(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});}
 document.getElementById('monthSelect').addEventListener('change',e=>{state.month=e.target.value;renderAll();});
-loadAll();
+
+// Check if already authenticated this session
+if(sessionStorage.getItem('cn_auth')==='1'){
+  document.getElementById('loginScreen').style.display='none';
+  loadAll();
+} else {
+  document.getElementById('pwdInput').focus();
+}
 </script>
 </body>
 </html>
