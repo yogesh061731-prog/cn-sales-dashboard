@@ -122,14 +122,9 @@ async function loadTargets() {
     const month = clean(row[0]);
     const manager = clean(row[1]);
     const key = norm(clean(row[2]));
-    const displayName = clean(row[3]);
-    // Column index 9 = "TL Updated Target", index 4 = base target
-    // Use TL Updated Target (col 9) if available, else base target (col 4)
-   const tlTarget = Number(clean(row[10] ?? ""));
-    const baseTarget = Number(clean(row[4] ?? ""));
-    const target = Number.isFinite(tlTarget) && tlTarget > 0 ? tlTarget : (Number.isFinite(baseTarget) ? baseTarget : 0);
-    if (month && manager && key) {
-      targets.push({ month, manager, key, displayName, target });
+    const target = Number(clean(row[4] ?? "")) || 0;
+    if (month && manager && key && month.match(/^\d{4}-\d{2}$/)) {
+      targets.push({ month, manager, key, target });
     }
   }
   return targets;
