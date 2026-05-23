@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CN Sales Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --ink:#14213d;--muted:#687386;--line:#dce3ed;--panel:#fff;--page:#f5f7fb;
+  --nav:#101828;--brand:#e53935;--green:#15803d;--amber:#b7791f;--red:#b42318;--blue:#1d4ed8;--teal:#087f8c;
+  --shadow:0 2px 12px rgba(18,32,58,.07);
+}
+@media(prefers-color-scheme:dark){
+  :root{--ink:#e8ecf4;--muted:#8d97aa;--line:#2a3347;--panel:#1a2235;--page:#111827;--nav:#0a0f1a;}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:var(--page);color:var(--ink);font-size:13px;line-height:1.5}
+.shell{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:100vh}
+.sidebar{background:var(--nav);color:#d8dee9;padding:20px 16px;display:flex;flex-direction:column;gap:24px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px}
+.bmark{width:38px;height:38px;background:var(--brand);border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;flex-shrink:0}
+.btitle{font-size:15px;font-weight:700;color:#fff}.bsub{font-size:11px;color:#8090a8}
+nav{display:grid;gap:4px}
+nav a{color:#a6b0c3;text-decoration:none;padding:9px 10px;border-radius:7px;font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background .15s}
+nav a:hover{background:rgba(255,255,255,.1);color:#fff}
+.rule-box{margin-top:auto;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.04);font-size:11px;color:#8090a8;display:grid;gap:6px}
+.rule-box strong{color:#c8d0de;font-size:12px}
+.content{padding:24px;display:grid;gap:18px;align-content:start}
+.topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;margin-bottom:4px}
+h1{font-size:24px;font-weight:700;color:var(--ink)}
+h2{font-size:16px;font-weight:600;color:var(--ink)}
+.controls{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.ctrl-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px}
+select,button{height:36px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);font:inherit;font-size:12px}
+select{padding:0 28px 0 10px}
+button{padding:0 14px;cursor:pointer;font-weight:600}
+button.primary{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
+.kpi-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.kpi-value{font-size:26px;font-weight:700;margin:6px 0 2px;line-height:1}
+.kpi-sub{font-size:11px;color:var(--muted)}
+.panel-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:var(--shadow)}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px}
+.pill{border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--muted)}
+.pill.live{background:#e6faf0;color:#15803d;border-color:#a3e6bc}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:480px}
+th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;font-size:12px}
+th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+td.r,th.r{text-align:right}
+.bar-track{height:6px;border-radius:3px;background:#edf1f6;overflow:hidden;min-width:70px}
+.bar-fill{height:100%;border-radius:inherit}
+.good{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}
+.pace-list,.status-list{display:grid;gap:10px}
+.pace-card,.status-card{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:8px}
+.pace-head{display:flex;justify-content:space-between;align-items:center}
+.pace-head strong{font-size:14px}.pace-head span{font-size:11px;color:var(--muted)}
+.pace-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.pace-row strong{color:var(--ink)}
+.status-head{display:flex;justify-content:space-between;align-items:center}
+.status-head strong{font-size:13px}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:#f0f2f6;color:var(--muted)}
+.rank-badge.gold{background:#fef3c7;color:#b45309}
+.rank-badge.silver{background:#f1f5f9;color:#475569}
+.rank-badge.bronze{background:#fdf1e8;color:#c2410c}
+.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);gap:10px;font-size:13px}
+.spinner{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err{background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:14px;color:var(--red);font-size:13px;line-height:1.6}
+@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{position:static;height:auto}.panel-row{grid-template-columns:1fr}}
+@media(max-width:560px){.content{padding:14px}.kpi-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand">
+    <div class="bmark">CN</div>
+    <div><div class="btitle">Sales BI</div><div class="bsub">Coding Ninjas</div></div>
+  </div>
+  <nav>
+    <a onclick="scrollTo('kpiGrid')">📊 Overview</a>
+    <a onclick="scrollTo('momSection')">📅 MOM Performance</a>
+    <a onclick="scrollTo('bdeSection')">🏆 BDE Leaderboard</a>
+    <a onclick="scrollTo('qualitySection')">✅ Quality Split</a>
+    <a onclick="scrollTo('trendSection')">📈 Trend</a>
+  </nav>
+  <div class="rule-box">
+    <span>Source of truth</span>
+    <strong>Source Reconciliation tab</strong>
+    <span>Rebuilt MOM · Rebuilt BDE Rankings · Manual Targets</span>
+  </div>
+</aside>
+
+<main class="content">
+  <div id="loadingState" class="loading"><div class="spinner"></div> Fetching from Google Sheet…</div>
+  <div id="errorState" style="display:none"></div>
+  <div id="dashContent" style="display:none">
+
+    <div class="topbar">
+      <div>
+        <p class="eyebrow" id="eyebrow">Senior Manager Dashboard</p>
+        <h1>Team Performance</h1>
+      </div>
+      <div class="controls">
+        <div><label class="ctrl-label">Month</label><select id="monthSelect"></select></div>
+        <button class="primary" onclick="loadAll()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpiGrid" style="scroll-margin-top:20px"></div>
+
+    <div class="panel-row" id="momSection" style="scroll-margin-top:20px">
+      <div class="panel">
+        <div class="panel-head">
+          <div><p class="eyebrow">Manager view</p><h2>MOM Performance</h2></div>
+          <span class="pill live" id="srcPill">Live</span>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>Manager</th><th class="r">Entries</th><th class="r">RFD</th>
+            <th class="r">Achievement</th><th class="r">Target</th>
+            <th>Ach %</th><th class="r">MTD Deficit</th>
+            <th class="r">Req DRR</th><th class="r">Refund %</th>
+          </tr></thead>
+          <tbody id="momRows"></tbody>
+        </table></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div><p class="eyebrow">Pace</p><h2>DRR Tracker</h2></div></div>
+        <div class="pace-list" id="paceCards"></div>
+      </div>
+    </div>
+
+    <div class="panel-row" id="bdeSection" style="scroll-margin-top:20px">
+      <div class="panel">
+        <div class="panel-head"><div><p class="eyebrow">Leaderboard</p><h2>Top BDEs — Achievement %</h2></div></div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>Rank</th><th>BDE</th><th>Manager</th>
+            <th class="r">Achievement</th><th class="r">Target</th>
+            <th>Ach %</th><th class="r">Refund %</th><th>Status</th>
+          </tr></thead>
+          <tbody id="leaderRows"></tbody>
+        </table></div>
+      </div>
+      <div class="panel" id="qualitySection" style="scroll-margin-top:20px">
+        <div class="panel-head"><div><p class="eyebrow">Quality</p><h2>Status Split</h2></div></div>
+        <div class="status-list" id="statusSplit"></div>
+        <div style="margin-top:16px;position:relative;height:180px"><canvas id="statusChart" role="img" aria-label="Status split doughnut chart"></canvas></div>
+        <div id="statusLegend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11px;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="trendSection" style="scroll-margin-top:20px">
+      <div class="panel-head"><div><p class="eyebrow">History</p><h2>Monthly Achievement vs Target (all managers)</h2></div></div>
+      <div style="position:relative;height:220px"><canvas id="trendChart" role="img" aria-label="Monthly achievement vs target bar chart"></canvas></div>
+      <div id="trendLegend" style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--muted)"></div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<script>
+const SHEET='1tXZjag4kJYqO2ZG5EXwKp559dkUiC3lgoSRiEs1yA-4';
+const fmt=v=>new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
+const pct=v=>(((v||0)*100).toFixed(1))+'%';
+const money=v=>'₹'+fmt(v);
+
+function parseCsv(t){
+  const rows=[];let row=[],cell='',q=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i],n=t[i+1];
+    if(q){if(c==='"'&&n==='"'){cell+='"';i++;}else if(c==='"'){q=false;}else cell+=c;}
+    else if(c==='"'){q=true;}
+    else if(c===','){row.push(cell);cell='';}
+    else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+    else if(c!=='\r')cell+=c;
+  }
+  if(cell||row.length){row.push(cell);rows.push(row);}
+  return rows;
+}
+
+function clean(v){return String(v??'').trim();}
+function norm(v){return clean(v).toLowerCase().replace(/\s+/g,' ');}
+function parseNum(v){return parseFloat(clean(v).replace(/,/g,''))||0;}
+function parsePct(v){
+  const s=clean(v);
+  if(s.endsWith('%'))return parseFloat(s)/100||0;
+  return parseFloat(s)||0;
+}
+
+async function fetchTab(name){
+  const url=`https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(name)}`;
+  const r=await fetch(url);
+  if(!r.ok)throw new Error(`Could not load "${name}" (HTTP ${r.status})`);
+  const rows=parseCsv(await r.text());
+  if(!rows.length)throw new Error(`"${name}" tab returned empty data`);
+  return rows;
+}
+
+function rowsToObjects(rows){
+  if(rows.length<2)return[];
+  const hdr=rows[0].map(h=>norm(h));
+  return rows.slice(1).filter(r=>r.some(c=>clean(c))).map(r=>{
+    const o={};hdr.forEach((h,i)=>o[h]=clean(r[i]??''));return o;
+  });
+}
+
+/* ── parse Rebuilt MOM ── */
+function parseMOM(rows){
+  return rowsToObjects(rows).filter(r=>r.month&&r.manager).map(r=>({
+    month:r.month,
+    monthLabel:r.month, // will format below
+    manager:r.manager,
+    entries:parseNum(r['total dump entries']),
+    complete:parseNum(r['complete/rfd']),
+    achievement:parseNum(r['achievement sales']),
+    refunds:parseNum(r.refunds),
+    down:parseNum(r['down payment']),
+    loan:parseNum(r['loan in progress']),
+    amount:parseNum(r['completed amount']),
+    target:parseNum(r.target),
+    achPct:parsePct(r['achievement %']),
+    refRate:parsePct(r['refund rate']),
+    activeBdes:parseNum(r['active bdes']),
+    twd:parseNum(r['total working days']),
+    ewd:parseNum(r['working days elapsed']),
+    ttd:parseNum(r['target till date']),
+    deficit:parseNum(r['mtd deficit']),
+    reqDrr:parseNum(r['required drr']),
+  }));
+}
+
+/* ── parse Rebuilt BDE Rankings ── */
+function parseBDE(rows){
+  return rowsToObjects(rows).filter(r=>r.month&&r.manager&&r['bde/counsellor']).map(r=>({
+    month:r.month,
+    manager:r.manager,
+    counsellor:r['bde/counsellor'],
+    key:r['counsellor key'],
+    entries:parseNum(r['total dump entries']),
+    complete:parseNum(r['complete/rfd']),
+    achievement:parseNum(r['achievement sales']),
+    refunds:parseNum(r.refunds),
+    down:parseNum(r['down payment']),
+    loan:parseNum(r['loan in progress']),
+    amount:parseNum(r['completed amount']),
+    target:parseNum(r.target),
+    achPct:parsePct(r['achievement %']),
+    refRate:parsePct(r['refund rate']),
+    rank:parseNum(r['overall rank']),
+    status:clean(r['status flag']||r.status||''),
+  }));
+}
+
+function mlabel(k){
+  if(!k||!k.includes('-'))return k;
+  const[y,mo]=k.split('-').map(Number);
+  return new Intl.DateTimeFormat('en',{month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(y,mo-1,1)));
+}
+
+let state={mom:[],bde:[],month:null};
+let trendChart=null,statusChart=null;
+
+async function loadAll(){
+  document.getElementById('loadingState').style.display='flex';
+  document.getElementById('errorState').style.display='none';
+  document.getElementById('dashContent').style.display='none';
+  try{
+    const[momRows,bdeRows]=await Promise.all([
+      fetchTab('Rebuilt MOM'),
+      fetchTab('Rebuilt BDE Rankings'),
+    ]);
+    state.mom=parseMOM(momRows);
+    state.bde=parseBDE(bdeRows);
+    const months=[...new Set(state.mom.map(r=>r.month))].sort();
+    if(!state.month||!months.includes(state.month))state.month=months.at(-1);
+    renderAll(months);
+    document.getElementById('loadingState').style.display='none';
+    document.getElementById('dashContent').style.display='';
+  }catch(e){
+    document.getElementById('loadingState').style.display='none';
+    document.getElementById('errorState').style.display='';
+    document.getElementById('errorState').innerHTML=`<div class="err">
+      ⚠ <strong>Could not load data</strong><br>${e.message}<br><br>
+      <strong>Fix:</strong> This dashboard fetches directly from Google Sheets via your browser. 
+      Due to CORS, it only works when served via your local Node.js server (<code>npm start</code> → <code>http://localhost:4173</code>). 
+      In the Claude artifact sandbox, the fetch is blocked.<br><br>
+      Run <code>npm start</code> in Terminal and open <code>http://localhost:4173</code> instead.
+    </div>`;
+  }
+}
+
+function clsPct(v){return v>=0.8?'good':v>=0.5?'warn':'bad';}
+function barColor(v){return v>=0.8?'#15803d':v>=0.5?'#b7791f':'#087f8c';}
+
+function renderAll(months){
+  const sel=document.getElementById('monthSelect');
+  const allMonths=months||[...new Set(state.mom.map(r=>r.month))].sort();
+  sel.innerHTML=allMonths.slice().reverse().map(m=>`<option value="${m}"${m===state.month?' selected':''}>${mlabel(m)}</option>`).join('');
+  document.getElementById('eyebrow').textContent=`Senior Manager · ${mlabel(state.month)}`;
+
+  const mMom=state.mom.filter(r=>r.month===state.month);
+  const mBde=state.bde.filter(r=>r.month===state.month);
+
+  renderKPI(mMom);
+  renderMOM(mMom);
+  renderPace(mMom);
+  renderLeader(mBde);
+  renderStatus(mMom);
+  renderTrend(state.mom);
+}
+
+function renderKPI(rows){
+  const ach=rows.reduce((a,r)=>a+r.achievement,0);
+  const tgt=rows.reduce((a,r)=>a+r.target,0);
+  const ent=rows.reduce((a,r)=>a+r.entries,0);
+  const ref=rows.reduce((a,r)=>a+r.refunds,0);
+  const amt=rows.reduce((a,r)=>a+r.amount,0);
+  const ap=tgt?ach/tgt:0;
+  document.getElementById('kpiGrid').innerHTML=`
+    <div class="kpi"><div class="kpi-label">Achievement</div>
+      <div class="kpi-value ${clsPct(ap)}">${fmt(ach)}</div>
+      <div class="kpi-sub">${pct(ap)} of ${fmt(tgt)} target</div></div>
+    <div class="kpi"><div class="kpi-label">Total Entries</div>
+      <div class="kpi-value">${fmt(ent)}</div>
+      <div class="kpi-sub">All dated dump rows</div></div>
+    <div class="kpi"><div class="kpi-label">Refund Rate</div>
+      <div class="kpi-value ${ref/Math.max(1,ent)>=0.2?'bad':'good'}">${pct(ent?ref/ent:0)}</div>
+      <div class="kpi-sub">${fmt(ref)} refund requests</div></div>
+    <div class="kpi"><div class="kpi-label">Completed Amount</div>
+      <div class="kpi-value">${money(amt)}</div>
+      <div class="kpi-sub">From RFD rows</div></div>
+  `;
+}
+
+function renderMOM(rows){
+  const s=[...rows].sort((a,b)=>b.achPct-a.achPct);
+  document.getElementById('momRows').innerHTML=s.map(r=>`<tr>
+    <td><strong>${r.manager}</strong></td>
+    <td class="r">${fmt(r.entries)}</td>
+    <td class="r">${fmt(r.complete)}</td>
+    <td class="r">${fmt(r.achievement)}</td>
+    <td class="r">${fmt(r.target)}</td>
+    <td style="min-width:120px">
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,r.achPct*100).toFixed(1)}%;background:${barColor(r.achPct)}"></div></div>
+      <span class="${clsPct(r.achPct)}" style="font-size:11px">${pct(r.achPct)}</span>
+    </td>
+    <td class="r ${r.deficit>0?'bad':'good'}">${r.deficit.toFixed(1)}</td>
+    <td class="r">${r.reqDrr.toFixed(1)}</td>
+    <td class="r ${r.refRate>=0.2?'bad':'good'}">${pct(r.refRate)}</td>
+  </tr>`).join('');
+}
+
+function renderPace(rows){
+  const s=[...rows].sort((a,b)=>b.reqDrr-a.reqDrr);
+  document.getElementById('paceCards').innerHTML=s.map(r=>`
+    <div class="pace-card">
+      <div class="pace-head"><strong>${r.manager}</strong><span>${r.ewd}/${r.twd} days elapsed</span></div>
+      <div class="bar-track" style="height:5px"><div class="bar-fill" style="width:${Math.min(100,r.achPct*100).toFixed(1)}%;background:${barColor(r.achPct)}"></div></div>
+      <div class="pace-row"><span>Target till date</span><strong>${r.ttd.toFixed(1)}</strong></div>
+      <div class="pace-row"><span>MTD deficit</span><strong class="${r.deficit>0?'bad':'good'}">${r.deficit.toFixed(1)}</strong></div>
+      <div class="pace-row"><span>Required DRR</span><strong>${r.reqDrr.toFixed(1)}</strong></div>
+      <div class="pace-row"><span>Active BDEs</span><strong>${r.activeBdes}</strong></div>
+    </div>
+  `).join('');
+}
+
+function renderLeader(rows){
+  const top=[...rows].filter(r=>r.rank>0||r.achievement>0)
+    .sort((a,b)=>b.achPct-a.achPct||b.achievement-a.achievement||a.refRate-b.refRate)
+    .slice(0,12);
+  document.getElementById('leaderRows').innerHTML=top.map((r,i)=>{
+    const bc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const st=r.status||( r.achPct>=1?'Ahead':r.achPct>=0.75?'On Track':r.refRate>=0.25?'At Risk':'Behind');
+    const sc=st==='Ahead'||st==='On Track'?'good':st==='At Risk'||st==='Behind'&&r.refRate>=0.25?'bad':'warn';
+    return`<tr>
+      <td><span class="rank-badge ${bc}">${i+1}</span></td>
+      <td><strong>${r.counsellor}</strong></td>
+      <td>${r.manager}</td>
+      <td class="r">${fmt(r.achievement)}</td>
+      <td class="r">${fmt(r.target)}</td>
+      <td style="min-width:110px">
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,r.achPct*100).toFixed(1)}%;background:${barColor(r.achPct)}"></div></div>
+        <span class="${clsPct(r.achPct)}" style="font-size:11px">${pct(r.achPct)}</span>
+      </td>
+      <td class="r ${r.refRate>=0.2?'bad':'good'}">${pct(r.refRate)}</td>
+      <td><span class="${sc}">${st}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderStatus(rows){
+  const t={c:0,r:0,d:0,l:0,tot:0};
+  for(const r of rows){t.c+=r.complete;t.r+=r.refunds;t.d+=r.down;t.l+=r.loan;t.tot+=r.entries;}
+  const items=[
+    ['Complete / RFD',t.c,'#15803d'],
+    ['Refund Requested',t.r,'#b42318'],
+    ['Down Payment',t.d,'#b7791f'],
+    ['Loan In Progress',t.l,'#1d4ed8'],
+  ];
+  document.getElementById('statusSplit').innerHTML=items.map(([lbl,val,col])=>`
+    <div class="status-card">
+      <div class="status-head"><strong>${lbl}</strong><span style="color:${col};font-weight:700">${fmt(val)}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${t.tot?Math.min(100,(val/t.tot)*100).toFixed(1):0}%;background:${col}"></div></div>
+    </div>
+  `).join('');
+  if(statusChart)statusChart.destroy();
+  const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
+  statusChart=new Chart(document.getElementById('statusChart'),{
+    type:'doughnut',
+    data:{labels:items.map(i=>i[0]),datasets:[{data:items.map(i=>i[1]),backgroundColor:items.map(i=>i[2]),borderWidth:2,borderColor:isDark?'#1a2235':'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}}
+  });
+  document.getElementById('statusLegend').innerHTML=items.map(([lbl,val,col])=>
+    `<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:2px;background:${col};display:inline-block"></span>${lbl} (${fmt(val)})</span>`
+  ).join('');
+}
+
+function renderTrend(momRows){
+  const allMonths=[...new Set(momRows.map(r=>r.month))].sort();
+  const labels=allMonths.map(mlabel);
+  const achData=allMonths.map(m=>momRows.filter(r=>r.month===m).reduce((a,r)=>a+r.achievement,0));
+  const tgtData=allMonths.map(m=>momRows.filter(r=>r.month===m).reduce((a,r)=>a+r.target,0));
+  if(trendChart)trendChart.destroy();
+  trendChart=new Chart(document.getElementById('trendChart'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Achievement',data:achData,backgroundColor:'rgba(8,127,140,.75)',borderRadius:4},
+      {label:'Target',data:tgtData,type:'line',borderColor:'#b42318',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#b42318',tension:.3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{font:{size:11},autoSkip:false,maxRotation:45},grid:{display:false}},
+        y:{ticks:{font:{size:11}},grid:{color:'rgba(0,0,0,.05)'}}
+      }
+    }
+  });
+  document.getElementById('trendLegend').innerHTML=`
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:2px;background:rgba(8,127,140,.75);display:inline-block"></span>Achievement</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:2px;background:#b42318;display:inline-block"></span>Target</span>
+  `;
+}
+
+function scrollTo(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});}
+document.getElementById('monthSelect').addEventListener('change',e=>{state.month=e.target.value;renderAll();});
+loadAll();
+</script>
+</body>
+</html>
