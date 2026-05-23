@@ -83,8 +83,42 @@ td.r,th.r{text-align:right}
 .spinner{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .err{background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:14px;color:var(--red);font-size:13px;line-height:1.6}
-@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{position:static;height:auto}.panel-row{grid-template-columns:1fr}}
-@media(max-width:560px){.content{padding:14px}.kpi-grid{grid-template-columns:1fr 1fr}}
+
+/* ── Mobile nav bar ── */
+.mob-nav{display:none;background:var(--nav);padding:0 16px;overflow-x:auto;white-space:nowrap;gap:4px;border-bottom:1px solid #1e2d42}
+.mob-nav a{display:inline-block;color:#a6b0c3;text-decoration:none;padding:12px 14px;font-size:12px;font-weight:600;border-bottom:2px solid transparent}
+.mob-nav a:hover{color:#fff;border-bottom-color:var(--brand)}
+
+@media(max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .mob-nav{display:flex}
+  .panel-row{grid-template-columns:1fr}
+  .content{padding:14px;gap:14px}
+  h1{font-size:20px}
+  .topbar{gap:10px}
+}
+
+@media(max-width:560px){
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .kpi-value{font-size:22px}
+  .controls{display:grid;grid-template-columns:1fr auto;gap:8px}
+  table{min-width:420px}
+  .panel{padding:12px}
+  /* Sticky first column on tables */
+  td:first-child,th:first-child{position:sticky;left:0;background:var(--panel);z-index:1}
+  th:first-child{background:var(--panel)}
+  /* Pace cards side by side */
+  .pace-list{grid-template-columns:1fr}
+  .pace-card{padding:10px}
+  /* Bottom safe area for phones */
+  .content{padding-bottom:32px}
+  /* Bigger touch targets */
+  nav a,.mob-nav a{min-height:44px;display:flex;align-items:center}
+  select,button{height:44px}
+  /* Login screen */
+  .login-box{margin:16px;padding:28px 20px}
+}
 </style>
 </head>
 <body>
@@ -92,6 +126,15 @@ td.r,th.r{text-align:right}
 <aside class="sidebar">
   <div class="brand">
     <div class="bmark">CN</div>
+
+<!-- Mobile top nav -->
+<div class="mob-nav">
+  <a onclick="scrollTo('kpiGrid')">📊 Overview</a>
+  <a onclick="scrollTo('momSection')">📅 MOM</a>
+  <a onclick="scrollTo('bdeSection')">🏆 BDEs</a>
+  <a onclick="scrollTo('qualitySection')">✅ Quality</a>
+  <a onclick="scrollTo('trendSection')">📈 Trend</a>
+</div>
     <div><div class="btitle">Sales BI</div><div class="bsub">Coding Ninjas</div></div>
   </div>
   <nav>
@@ -132,6 +175,7 @@ td.r,th.r{text-align:right}
       <div class="controls">
         <div><label class="ctrl-label">Month</label><select id="monthSelect"></select></div>
         <button class="primary" onclick="loadAll()">↻ Refresh</button>
+        <span id="lastUpdated" style="font-size:11px;color:var(--muted);align-self:center"></span>
       </div>
     </div>
 
@@ -305,8 +349,12 @@ async function loadAll(){
     const months=[...new Set(state.mom.map(r=>r.month))].sort();
     if(!state.month||!months.includes(state.month))state.month=months.at(-1);
     renderAll(months);
-    document.getElementById('loadingState').style.display='none';
-    document.getElementById('dashContent').style.display='';
+    document.getElementById('lastUpdated').textContent=`Last updated at ${new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}`;
+    // Auto-refresh every 5 minutes
+    clearInterval(window._autoRefresh);
+    window._autoRefresh=setInterval(()=>{
+      if(sessionStorage.getItem('cn_auth')==='1')loadAll();
+    },5*60*1000);
   }catch(e){
     document.getElementById('loadingState').style.display='none';
     document.getElementById('errorState').style.display='';
