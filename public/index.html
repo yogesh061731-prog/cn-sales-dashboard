@@ -485,7 +485,13 @@ function openModal(bucket, salesRows){
   document.getElementById('modalOverlay').style.display='flex';
 }
 function showLeads(bucket){
-  openModal(bucket, state.sales||[]);
+  const filteredSales = (state.sales || []).filter(r => {
+    if(!r.date) return false;
+    const d = new Date(r.date);
+    const monthKey = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    return monthKey === state.month;
+  });
+  openModal(bucket, filteredSales);
 }
 function closeModal(){
   document.getElementById('modalOverlay').style.display='none';
