@@ -502,20 +502,18 @@ function renderLeader(rows){
 
 function openModal(bucket, salesRows){
   const norm = (s) => String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
-  const parseDateString = (s) => {
-    if(!s) return new Date(0);
-    const parts = String(s).split('-').map(Number);
-    if(parts.length===3){
-      const [a,b,c] = parts;
-      if(c >= 1000) return new Date(c, b - 1, a); // dd-mm-yyyy -> [dd,mm,yyyy]
-      if(a >= 1000) return new Date(a, b - 1, c); // yyyy-mm-dd -> [yyyy,mm,dd]
-    }
-    const d = new Date(s);
-    return isNaN(d) ? new Date(0) : d;
-  };
 
-  const filtered = (salesRows || []).filter(r => norm(r.bucket) === norm(bucket))
-    .sort((a,b) => parseDateToTs(b.date) - parseDateToTs(a.date));
+  // Primary exact-match by canonical bucket, fallback to keyword contains
+  const rows = (salesRows || []).slice();
+  let filtered = rows.filter(r => norm(r.bucket) === norm(bucket));
+  if(filtered.length === 0){
+    const kw = norm(bucket).split(/\W+/).filter(Boolean);
+    filtered = rows.filter(r => {
+      const rb = norm(r.bucket || r._rawBucket || '');
+      return kw.some(k => rb.includes(k));
+    });
+  }
+  filtered.sort((a,b) => parseDateToTs(b.date) - parseDateToTs(a.date));
 
   document.getElementById('modalTitle').textContent = `${bucket} — ${filtered.length} lead${filtered.length!==1?'s':''}`;
   const money = v => '₹' + new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
@@ -532,11 +530,19 @@ function openModal(bucket, salesRows){
   document.getElementById('modalOverlay').style.display='flex';
 }
 function showLeads(bucket){
-  const filteredSales = (state.sales || []).filter(r => {
-    const mk = parseMonthKey(r.date);
-    return mk === state.month;
-  });
-  openModal(bucket, filteredSales);
+  const salesForMonth = (state.sales || []).filter(r => parseMonthKey(r.date) === state.month);
+  // Log bucket breakdown to help debugging
+  try{
+    const norm = s=>String(s||'').trim().toLowerCase();
+    const groups = {};
+    for(const s of salesForMonth){
+      const key = (s.bucket || s._rawBucket || '').trim() || '(empty)';
+      groups[key] = (groups[key]||0) + 1;
+    }
+    console.info('showLeads month', state.month, 'bucketGroups', groups, 'totalSalesForMonth', salesForMonth.length);
+  }catch(e){console.warn('showLeads debug failed', e)}
+
+  openModal(bucket, salesForMonth);
 }
 function closeModal(){
   document.getElementById('modalOverlay').style.display='none';
