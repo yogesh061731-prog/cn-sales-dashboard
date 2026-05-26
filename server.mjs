@@ -139,6 +139,7 @@ async function dashboardData() {
 
     return {
       date: o["enrollment date"],
+      month: o["month"],          // ← use the pre-calculated month column (yyyy-mm)
       manager: o["manager"],
       counsellor: o["counsellor"],
       learner: o["learner"],
@@ -147,7 +148,6 @@ async function dashboardData() {
       _rawBucket: rawBucket,
     };
   });
-
   const months = [...new Set(momRows.map(r => r.month))].sort();
   const latestMonth = months.at(-1);
 

@@ -530,7 +530,9 @@ function openModal(bucket, salesRows){
   document.getElementById('modalOverlay').style.display='flex';
 }
 function showLeads(bucket){
-  const salesForMonth = (state.sales || []).filter(r => parseMonthKey(r.date) === state.month);
+  const salesForMonth = (state.sales || []).filter(r => r.month === state.month);
+  openModal(bucket, salesForMonth);
+}
   // Log bucket breakdown to help debugging
   try{
     const norm = s=>String(s||'').trim().toLowerCase();
