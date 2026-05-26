@@ -118,10 +118,26 @@ function parseBDE(rows) {
 
 // ── Main data loader ────────────────────────────────────────
 async function dashboardData() {
-  const [momRows, bdeRows] = await Promise.all([
+  const [momRows, bdeRows, srcRows] = await Promise.all([
     loadSheetCsv("Rebuilt MOM").then(parseMOM),
     loadSheetCsv("Rebuilt BDE Rankings").then(parseBDE),
+    loadSheetCsv("Source Reconciliation"),
   ]);
+
+  // Parse source reconciliation for lead details
+  const hdr = srcRows[0].map(h => clean(h).toLowerCase());
+  const sales = srcRows.slice(1).filter(r => r.some(c => clean(c))).map(r => {
+    const o = {};
+    hdr.forEach((h, i) => o[h] = clean(r[i] ?? ""));
+    return {
+      date: o["enrollment date"],
+      manager: o["manager"],
+      counsellor: o["counsellor"],
+      learner: o["learner"],
+      amount: parseNum(o["amount parsed"] || o["amount raw"]),
+      bucket: o["status bucket"],
+    };
+  });
 
   const months = [...new Set(momRows.map(r => r.month))].sort();
   const latestMonth = months.at(-1);
@@ -134,6 +150,7 @@ async function dashboardData() {
     months,
     momRows,
     bdeRows,
+     sales,
   };
 }
 

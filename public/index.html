@@ -103,7 +103,16 @@ td.r,th.r{text-align:right}
 @keyframes spin{to{transform:rotate(360deg)}}
 .err{background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:14px;color:var(--red);font-size:13px;line-height:1.6}
 
-/* Filter tabs */
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--panel);border-radius:12px;padding:20px;width:100%;max-width:700px;max-height:85vh;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-head{display:flex;justify-content:space-between;align-items:center}
+.modal-head h2{font-size:16px}
+.modal-close{width:32px;height:32px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--muted);font-size:16px;cursor:pointer;display:grid;place-items:center}
+.modal-body{overflow-y:auto;flex:1}
+.modal-body table{min-width:400px}
+.status-card{cursor:pointer;transition:box-shadow .15s}
+.status-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1);border-color:var(--ink)}
 .filter-tabs{display:flex;gap:4px;flex-wrap:wrap}
 .ftab{height:30px;padding:0 12px;border:1px solid var(--line);border-radius:20px;background:var(--panel);color:var(--muted);font:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
 .ftab:hover{border-color:var(--ink);color:var(--ink)}
@@ -134,9 +143,30 @@ td.r,th.r{text-align:right}
     <div class="login-logo">CN</div>
     <div class="login-title">Yogesh's Sales Desk</div>
     <div class="login-sub">Coding Ninjas · Senior Manager Dashboard</div>
+    <input class="login-input" id="emailInput" type="email" placeholder="Enter your email" style="margin-bottom:10px;letter-spacing:0"/>
     <input class="login-input" id="pwdInput" type="password" placeholder="Enter password" maxlength="20"/>
     <button class="login-btn" onclick="checkPwd()">Unlock Dashboard</button>
     <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- Lead detail modal -->
+<div class="modal-overlay" id="modalOverlay" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalTitle">Leads</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Date</th><th>Manager</th><th>BDE</th><th>Learner</th><th>Status</th><th class="r">Amount</th>
+          </tr></thead>
+          <tbody id="modalRows"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -250,7 +280,13 @@ td.r,th.r{text-align:right}
 </div>
 
 <script>
-const fmt=v=>new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
+const ALLOWED_EMAILS=[
+  'yogesh.gautam01@codingninjas.com',
+  'priyanka.jaiswal@codingninjas.com',
+  'mohd.nazim@codingninjas.com',
+  'azhaan.yezdani@codingninjas.com',
+  'harsh.agarwal@codingninjas.com',
+];
 const pct=v=>(((v||0)*100).toFixed(1))+'%';
 const money=v=>'₹'+fmt(v);
 const clsPct=v=>v>=0.8?'good':v>=0.5?'warn':'bad';
@@ -266,16 +302,25 @@ let trendChart=null,statusChart=null;
 
 /* ── Auth ── */
 function checkPwd(){
-  if(document.getElementById('pwdInput').value==='CN2026'){
-    document.getElementById('loginScreen').style.display='none';
-    sessionStorage.setItem('cn_auth','1');
-    loadAll();
-  } else {
-    document.getElementById('loginErr').textContent='Incorrect password. Try again.';
+  const email=document.getElementById('emailInput').value.trim().toLowerCase();
+  const pwd=document.getElementById('pwdInput').value;
+  const errEl=document.getElementById('loginErr');
+  if(!ALLOWED_EMAILS.includes(email)){
+    errEl.textContent='This email is not authorised to access this dashboard.';
+    return;
+  }
+  if(pwd!=='CN2026'){
+    errEl.textContent='Incorrect password. Try again.';
     document.getElementById('pwdInput').value='';
     document.getElementById('pwdInput').focus();
+    return;
   }
+  document.getElementById('loginScreen').style.display='none';
+  sessionStorage.setItem('cn_auth','1');
+  sessionStorage.setItem('cn_email',email);
+  loadAll();
 }
+document.getElementById('emailInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pwdInput').focus();});
 document.getElementById('pwdInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkPwd();});
 
 /* ── Load data from server ── */
@@ -308,6 +353,7 @@ async function loadAll(){
       achPct:r.achievementPct,refRate:r.refundRate,
       rank:r.overallRank,status:r.status,
     }));
+    state.sales = json.sales || [];
     const months=[...new Set(state.mom.map(r=>r.month))].sort();
     if(!state.month||!months.includes(state.month))state.month=months.at(-1);
     renderAll(months);
@@ -418,13 +464,54 @@ function renderLeader(rows){
   }).join('');
 }
 
+function openModal(bucket, salesRows){
+  const filtered=salesRows.filter(r=>r.bucket===bucket)
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById('modalTitle').textContent=`${bucket} — ${filtered.length} lead${filtered.length!==1?'s':''}`;
+  const money=v=>'₹'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
+  document.getElementById('modalRows').innerHTML=filtered.length
+    ? filtered.map(r=>`<tr>
+        <td>${r.date}</td>
+        <td>${r.manager}</td>
+        <td>${r.counsellor}</td>
+        <td>${r.learner}</td>
+        <td><span class="${r.bucket==='Complete/RFD'?'good':r.bucket==='Refund Requested'?'bad':'warn'}">${r.bucket}</span></td>
+        <td class="r">${money(r.amount)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No records found</td></tr>';
+  document.getElementById('modalOverlay').style.display='flex';
+}
+function showLeads(bucket){
+  openModal(bucket, state.sales||[]);
+}
+function closeModal(){
+  document.getElementById('modalOverlay').style.display='none';
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
 function renderStatus(rows){
   const t={c:0,r:0,d:0,l:0,tot:0};
   for(const r of rows){t.c+=r.complete;t.r+=r.refunds;t.d+=r.down;t.l+=r.loan;t.tot+=r.entries;}
-  const items=[['Complete / RFD',t.c,'#15803d'],['Refund Requested',t.r,'#b42318'],['Down Payment',t.d,'#b7791f'],['Loan In Progress',t.l,'#1d4ed8']];
-  document.getElementById('statusSplit').innerHTML=items.map(([lbl,val,col])=>`
-    <div class="status-card">
-      <div class="status-head"><strong>${lbl}</strong><span style="color:${col};font-weight:700">${fmt(val)}</span></div>
+  // Get current month sales for modal details
+  const monthSales=state.bde
+    .filter(r=>r.month===state.month)
+    .flatMap(r=>r._rawSales||[]);
+  const items=[
+    ['Complete / RFD',t.c,'#15803d','Complete/RFD'],
+    ['Refund Requested',t.r,'#b42318','Refund Requested'],
+    ['Down Payment',t.d,'#b7791f','Down Payment'],
+    ['Loan In Progress',t.l,'#1d4ed8','Loan In Progress'],
+  ];
+  document.getElementById('statusSplit').innerHTML=items.map(([lbl,val,col,bucket])=>`
+    <div class="status-card" onclick="showLeads('${bucket}')">
+      <div class="status-head">
+        <strong>${lbl}</strong>
+        <span style="display:flex;align-items:center;gap:6px">
+          <span style="color:${col};font-weight:700">${fmt(val)}</span>
+          <span style="font-size:10px;color:var(--muted)">tap for details →</span>
+        </span>
+      </div>
       <div class="bar-track"><div class="bar-fill" style="width:${t.tot?Math.min(100,(val/t.tot)*100).toFixed(1):0}%;background:${col}"></div></div>
     </div>`).join('');
   if(statusChart)statusChart.destroy();
