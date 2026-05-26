@@ -287,6 +287,9 @@ const ALLOWED_EMAILS=[
   'azhaan.yezdani@codingninjas.com',
   'harsh.agarwal@codingninjas.com',
 ];
+function fmt(v){
+  return (v == null ? 0 : Number(v)).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
 const pct=v=>(((v||0)*100).toFixed(1))+'%';
 const money=v=>'₹'+fmt(v);
 const clsPct=v=>v>=0.8?'good':v>=0.5?'warn':'bad';
