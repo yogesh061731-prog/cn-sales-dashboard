@@ -468,17 +468,31 @@ function renderLeader(rows){
 }
 
 function openModal(bucket, salesRows){
-  const filtered=salesRows.filter(r=>r.bucket===bucket)
-    .sort((a,b)=>new Date(b.date)-new Date(a.date));
-  document.getElementById('modalTitle').textContent=`${bucket} — ${filtered.length} lead${filtered.length!==1?'s':''}`;
-  const money=v=>'₹'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
-  document.getElementById('modalRows').innerHTML=filtered.length
+  const norm = (s) => String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const parseDateString = (s) => {
+    if(!s) return new Date(0);
+    const parts = String(s).split('-').map(Number);
+    if(parts.length===3){
+      const [a,b,c] = parts;
+      if(c >= 1000) return new Date(c, b - 1, a); // dd-mm-yyyy -> [dd,mm,yyyy]
+      if(a >= 1000) return new Date(a, b - 1, c); // yyyy-mm-dd -> [yyyy,mm,dd]
+    }
+    const d = new Date(s);
+    return isNaN(d) ? new Date(0) : d;
+  };
+
+  const filtered = (salesRows || []).filter(r => norm(r.bucket) === norm(bucket))
+    .sort((a,b) => parseDateString(b.date) - parseDateString(a.date));
+
+  document.getElementById('modalTitle').textContent = `${bucket} — ${filtered.length} lead${filtered.length!==1?'s':''}`;
+  const money = v => '₹' + new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
+  document.getElementById('modalRows').innerHTML = filtered.length
     ? filtered.map(r=>`<tr>
         <td>${r.date}</td>
         <td>${r.manager}</td>
         <td>${r.counsellor}</td>
         <td>${r.learner}</td>
-        <td><span class="${r.bucket==='Complete/RFD'?'good':r.bucket==='Refund Requested'?'bad':'warn'}">${r.bucket}</span></td>
+        <td><span class="${norm(r.bucket)==='complete/rfd'?'good':norm(r.bucket)==='refund requested'?'bad':'warn'}">${r.bucket}</span></td>
         <td class="r">${money(r.amount)}</td>
       </tr>`).join('')
     : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No records found</td></tr>';
@@ -506,6 +520,24 @@ function renderStatus(rows){
   const monthSales=state.bde
     .filter(r=>r.month===state.month)
     .flatMap(r=>r._rawSales||[]);
+
+  // Debug: compare aggregated MOM counts vs raw sales counts for current month
+  try{
+    const salesForMonth = (state.sales || []).filter(s => {
+      if(!s.date) return false;
+      const [day, month, year] = String(s.date).split('-').map(Number);
+      const monthKey = year + '-' + String(month).padStart(2,'0');
+      return monthKey === state.month;
+    });
+    const norm = s => String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+    const salesCounts = {
+      complete: salesForMonth.filter(s=> norm(s.bucket) === 'complete/rfd').length,
+      refund: salesForMonth.filter(s=> norm(s.bucket) === 'refund requested').length,
+      down: salesForMonth.filter(s=> norm(s.bucket) === 'down payment').length,
+      loan: salesForMonth.filter(s=> norm(s.bucket) === 'loan in progress').length,
+    };
+    console.info('MOM aggregates vs sales counts', {mom:{complete:t.c,refund:t.r,down:t.d,loan:t.l}, sales: salesCounts, month: state.month});
+  }catch(e){console.warn('Error computing debug sales counts', e)}
   const items=[
     ['Complete / RFD',t.c,'#15803d','Complete/RFD'],
     ['Refund Requested',t.r,'#b42318','Refund Requested'],
