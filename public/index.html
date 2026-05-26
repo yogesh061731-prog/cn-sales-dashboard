@@ -487,8 +487,8 @@ function openModal(bucket, salesRows){
 function showLeads(bucket){
   const filteredSales = (state.sales || []).filter(r => {
     if(!r.date) return false;
-    const d = new Date(r.date);
-    const monthKey = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const [day, month, year] = r.date.split('-').map(Number);
+    const monthKey = year + '-' + String(month).padStart(2,'0');
     return monthKey === state.month;
   });
   openModal(bucket, filteredSales);
