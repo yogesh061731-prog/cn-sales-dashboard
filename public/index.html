@@ -533,19 +533,6 @@ function showLeads(bucket){
   const salesForMonth = (state.sales || []).filter(r => r.month === state.month);
   openModal(bucket, salesForMonth);
 }
-  // Log bucket breakdown to help debugging
-  try{
-    const norm = s=>String(s||'').trim().toLowerCase();
-    const groups = {};
-    for(const s of salesForMonth){
-      const key = (s.bucket || s._rawBucket || '').trim() || '(empty)';
-      groups[key] = (groups[key]||0) + 1;
-    }
-    console.info('showLeads month', state.month, 'bucketGroups', groups, 'totalSalesForMonth', salesForMonth.length);
-  }catch(e){console.warn('showLeads debug failed', e)}
-
-  openModal(bucket, salesForMonth);
-}
 function closeModal(){
   document.getElementById('modalOverlay').style.display='none';
 }
