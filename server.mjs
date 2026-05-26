@@ -129,13 +129,22 @@ async function dashboardData() {
   const sales = srcRows.slice(1).filter(r => r.some(c => clean(c))).map(r => {
     const o = {};
     hdr.forEach((h, i) => o[h] = clean(r[i] ?? ""));
+    const rawBucket = o["status bucket"] || "";
+    const bnorm = norm(rawBucket);
+    let bucket = rawBucket;
+    if (bnorm.includes('complete') || bnorm.includes('rfd')) bucket = 'Complete/RFD';
+    else if (bnorm.includes('refund')) bucket = 'Refund Requested';
+    else if (bnorm.includes('down')) bucket = 'Down Payment';
+    else if (bnorm.includes('loan')) bucket = 'Loan In Progress';
+
     return {
       date: o["enrollment date"],
       manager: o["manager"],
       counsellor: o["counsellor"],
       learner: o["learner"],
       amount: parseNum(o["amount parsed"] || o["amount raw"]),
-      bucket: o["status bucket"],
+      bucket,
+      _rawBucket: rawBucket,
     };
   });
 

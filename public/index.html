@@ -300,6 +300,39 @@ function mlabel(k){
   return new Intl.DateTimeFormat('en',{month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(y,mo-1,1)));
 }
 
+function parseDateToTs(s){
+  if(!s) return 0;
+  const str = String(s).trim();
+  const sep = str.includes('/') ? '/' : '-';
+  const parts = str.split(sep).map(x=>x.trim());
+  if(parts.length===3){
+    const a = Number(parts[0]);
+    const b = Number(parts[1]);
+    const c = Number(parts[2]);
+    if(c >= 1000) return new Date(c, b-1, a).getTime(); // dd-mm-yyyy or dd/mm/yyyy
+    if(a >= 1000) return new Date(a, b-1, c).getTime(); // yyyy-mm-dd
+  }
+  const d = new Date(str);
+  return isNaN(d) ? 0 : d.getTime();
+}
+
+function parseMonthKey(s){
+  if(!s) return null;
+  const str = String(s).trim();
+  const sep = str.includes('/') ? '/' : '-';
+  const parts = str.split(sep).map(x=>x.trim());
+  if(parts.length===3){
+    const a = Number(parts[0]);
+    const b = Number(parts[1]);
+    const c = Number(parts[2]);
+    if(c >= 1000) return `${c}-${String(b).padStart(2,'0')}`; // dd-mm-yyyy -> yyyy-mm
+    if(a >= 1000) return `${a}-${String(b).padStart(2,'0')}`; // yyyy-mm-dd -> yyyy-mm
+  }
+  const d = new Date(str);
+  if(isNaN(d)) return null;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
 let state={mom:[],bde:[],month:null};
 let trendChart=null,statusChart=null;
 
@@ -482,7 +515,7 @@ function openModal(bucket, salesRows){
   };
 
   const filtered = (salesRows || []).filter(r => norm(r.bucket) === norm(bucket))
-    .sort((a,b) => parseDateString(b.date) - parseDateString(a.date));
+    .sort((a,b) => parseDateToTs(b.date) - parseDateToTs(a.date));
 
   document.getElementById('modalTitle').textContent = `${bucket} — ${filtered.length} lead${filtered.length!==1?'s':''}`;
   const money = v => '₹' + new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
@@ -500,10 +533,8 @@ function openModal(bucket, salesRows){
 }
 function showLeads(bucket){
   const filteredSales = (state.sales || []).filter(r => {
-    if(!r.date) return false;
-    const [day, month, year] = r.date.split('-').map(Number);
-    const monthKey = year + '-' + String(month).padStart(2,'0');
-    return monthKey === state.month;
+    const mk = parseMonthKey(r.date);
+    return mk === state.month;
   });
   openModal(bucket, filteredSales);
 }
@@ -524,10 +555,8 @@ function renderStatus(rows){
   // Debug: compare aggregated MOM counts vs raw sales counts for current month
   try{
     const salesForMonth = (state.sales || []).filter(s => {
-      if(!s.date) return false;
-      const [day, month, year] = String(s.date).split('-').map(Number);
-      const monthKey = year + '-' + String(month).padStart(2,'0');
-      return monthKey === state.month;
+      const mk = parseMonthKey(s.date);
+      return mk === state.month;
     });
     const norm = s => String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
     const salesCounts = {
