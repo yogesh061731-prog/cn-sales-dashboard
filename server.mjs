@@ -118,17 +118,31 @@ function parseBDE(rows) {
 
 // ── Main data loader ────────────────────────────────────────
 async function dashboardData() {
-  const [momRows, bdeRows, srcRows] = await Promise.all([
+  const [momRows, bdeRows, srcRows, azRows, nazRows, priRows] = await Promise.all([
     loadSheetCsv("Rebuilt MOM").then(parseMOM),
     loadSheetCsv("Rebuilt BDE Rankings").then(parseBDE),
     loadSheetCsv("Source Reconciliation"),
+    loadSheetCsv("Azhaan"),
+    loadSheetCsv("Nazim"),
+    loadSheetCsv("Priyanka"),
   ]);
+
+  // Build a counsellor→manager lookup from raw tabs
+  const mgMap = new Map();
+  [[azRows,"Azhaan"],[nazRows,"Nazim"],[priRows,"Priyanka"]].forEach(([rows,mgr])=>{
+    rows.slice(1).forEach(r=>{ const k=clean(r[1]||"").toLowerCase(); if(k) mgMap.set(k,mgr); });
+  });
 
   // Parse source reconciliation for lead details
   const hdr = srcRows[0].map(h => clean(h).toLowerCase());
   const sales = srcRows.slice(1).filter(r => r.some(c => clean(c))).map(r => {
     const o = {};
     hdr.forEach((h, i) => o[h] = clean(r[i] ?? ""));
+    // Fix missing manager by looking up counsellor name
+    if(!o["manager"]) {
+      const ck = clean(o["counsellor"]||"").toLowerCase();
+      o["manager"] = mgMap.get(ck) || mgMap.get(ck.split(" ")[0]) || "";
+    }
     const rawBucket = o["status bucket"] || "";
     const bnorm = norm(rawBucket);
     let bucket = rawBucket;
