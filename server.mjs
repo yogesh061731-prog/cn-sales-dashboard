@@ -137,9 +137,22 @@ async function dashboardData() {
     else if (bnorm.includes('down')) bucket = 'Down Payment';
     else if (bnorm.includes('loan')) bucket = 'Loan In Progress';
 
-    return {
-      date: o["enrollment date"],
-      month: o["month"],          // ← use the pre-calculated month column (yyyy-mm)
+   // Parse month from the pre-calculated month column, fallback to enrollment date
+const rawMonth = o["month"] || "";
+const monthVal = rawMonth.match(/^\d{4}-\d{2}$/) ? rawMonth : (() => {
+  const d = o["enrollment date"] || "";
+  const sep = d.includes('/') ? '/' : '-';
+  const p = d.split(sep);
+  if(p.length === 3) {
+    const a=Number(p[0]),b=Number(p[1]),c=Number(p[2]);
+    if(c>=1000) return `${c}-${String(b).padStart(2,'0')}`;
+    if(a>=1000) return `${a}-${String(b).padStart(2,'0')}`;
+  }
+  return "";
+})();
+return {
+  date: o["enrollment date"],
+  month: monthVal,         // ← use the pre-calculated month column (yyyy-mm)
       manager: o["manager"],
       counsellor: o["counsellor"],
       learner: o["learner"],
