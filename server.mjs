@@ -117,64 +117,68 @@ function parseBDE(rows) {
 }
 
 // ── Main data loader ────────────────────────────────────────
+// ── Main data loader ────────────────────────────────────────
 async function dashboardData() {
-  const [momRows, bdeRows, srcRows, azRows, nazRows, priRows] = await Promise.all([
+  const MANAGERS = ["Azhaan", "Nazim", "Priyanka"];
+
+  const [momRows, bdeRows, ...rawTabs] = await Promise.all([
     loadSheetCsv("Rebuilt MOM").then(parseMOM),
     loadSheetCsv("Rebuilt BDE Rankings").then(parseBDE),
-    loadSheetCsv("Source Reconciliation"),
-    loadSheetCsv("Azhaan"),
-    loadSheetCsv("Nazim"),
-    loadSheetCsv("Priyanka"),
+    ...MANAGERS.map(m => loadSheetCsv(m)),
   ]);
 
-  // Build a counsellor→manager lookup from raw tabs
-  const mgMap = new Map();
-  [[azRows,"Azhaan"],[nazRows,"Nazim"],[priRows,"Priyanka"]].forEach(([rows,mgr])=>{
-    rows.slice(1).forEach(r=>{ const k=clean(r[1]||"").toLowerCase(); if(k) mgMap.set(k,mgr); });
-  });
+  // Build sales array directly from raw manager tabs
+  const sales = [];
+  MANAGERS.forEach((manager, idx) => {
+    const rows = rawTabs[idx];
+    // Skip header row (row 0) — Priyanka's sheet has header on row 0
+    const startRow = 1;
+    for (let i = startRow; i < rows.length; i++) {
+      const row = rows[i];
+      const dateRaw = clean(row[0] || "");
+      if (!dateRaw) continue;
 
-  // Parse source reconciliation for lead details
-  const hdr = srcRows[0].map(h => clean(h).toLowerCase());
-  const sales = srcRows.slice(1).filter(r => r.some(c => clean(c))).map(r => {
-    const o = {};
-    hdr.forEach((h, i) => o[h] = clean(r[i] ?? ""));
-    // Fix missing manager by looking up counsellor name
-    if(!o["manager"]) {
-      const ck = clean(o["counsellor"]||"").toLowerCase();
-      o["manager"] = mgMap.get(ck) || mgMap.get(ck.split(" ")[0]) || "";
+      // Parse date dd/mm/yyyy or dd-mm-yyyy
+      const sep = dateRaw.includes('/') ? '/' : '-';
+      const parts = dateRaw.split(sep);
+      if (parts.length !== 3) continue;
+      const a = Number(parts[0]), b = Number(parts[1]), c = Number(parts[2]);
+      let month = "";
+      if (c >= 1000) month = `${c}-${String(b).padStart(2,'0')}`;
+      else if (a >= 1000) month = `${a}-${String(b).padStart(2,'0')}`;
+      if (!month) continue;
+
+      const counsellor = clean(row[1] || "");
+      const learner = clean(row[2] || "");
+      const amountRaw = clean(row[5] || "");
+      const statusRaw = clean(row[6] || "");
+
+      // Normalise status to bucket
+      const sn = statusRaw.toLowerCase().replace(/\s+/g,' ').trim();
+      let bucket = "Other";
+      if (["full payment recieved","full payment received","manual payment"].includes(sn)) bucket = "Complete/RFD";
+      else if (sn === "refund requested") bucket = "Refund Requested";
+      else if (sn === "down payment") bucket = "Down Payment";
+      else if (sn === "loan in progress") bucket = "Loan In Progress";
+
+      // Parse amount
+      const ar = amountRaw.toLowerCase().replace(/,/g,'').replace(/\s+/g,'');
+      const mul = ar.endsWith('k') ? 1000 : 1;
+      const amount = (parseFloat(ar.endsWith('k') ? ar.slice(0,-1) : ar) || 0) * mul;
+
+      sales.push({
+        date: dateRaw,
+        month,
+        manager,
+        counsellor,
+        learner,
+        amount,
+        bucket,
+        status: statusRaw,
+      });
     }
-    const rawBucket = o["status bucket"] || "";
-    const bnorm = norm(rawBucket);
-    let bucket = rawBucket;
-    if (bnorm.includes('complete') || bnorm.includes('rfd')) bucket = 'Complete/RFD';
-    else if (bnorm.includes('refund')) bucket = 'Refund Requested';
-    else if (bnorm.includes('down')) bucket = 'Down Payment';
-    else if (bnorm.includes('loan')) bucket = 'Loan In Progress';
-
-   // Parse month from the pre-calculated month column, fallback to enrollment date
-const rawMonth = o["month"] || "";
-const monthVal = rawMonth.match(/^\d{4}-\d{2}$/) ? rawMonth : (() => {
-  const d = o["enrollment date"] || "";
-  const sep = d.includes('/') ? '/' : '-';
-  const p = d.split(sep);
-  if(p.length === 3) {
-    const a=Number(p[0]),b=Number(p[1]),c=Number(p[2]);
-    if(c>=1000) return `${c}-${String(b).padStart(2,'0')}`;
-    if(a>=1000) return `${a}-${String(b).padStart(2,'0')}`;
-  }
-  return "";
-})();
-return {
-  date: o["enrollment date"],
-  month: monthVal,         // ← use the pre-calculated month column (yyyy-mm)
-      manager: o["manager"],
-      counsellor: o["counsellor"],
-      learner: o["learner"],
-      amount: parseNum(o["amount parsed"] || o["amount raw"]),
-      bucket,
-      _rawBucket: rawBucket,
-    };
   });
+
   const months = [...new Set(momRows.map(r => r.month))].sort();
   const latestMonth = months.at(-1);
 
@@ -186,7 +190,7 @@ return {
     months,
     momRows,
     bdeRows,
-     sales,
+    sales,
   };
 }
 
