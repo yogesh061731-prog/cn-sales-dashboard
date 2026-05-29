@@ -165,10 +165,11 @@ async function sendEmail(subject, htmlBody) {
   if (!EMAIL_APP_PASSWORD) { console.log("EMAIL_APP_PASSWORD not set, skipping email"); return; }
   try {
     const { createTransport } = await import("nodemailer");
-    const transporter = createTransport({
-      host: "smtp.gmail.com", port: 465, secure: true,
-      auth: { user: EMAIL_FROM, pass: EMAIL_APP_PASSWORD.replace(/\s/g, "") },
-    });
+   const transporter = createTransport({
+  host: "smtp.gmail.com", port: 587, secure: false,
+  requireTLS: true,
+  auth: { user: EMAIL_FROM, pass: EMAIL_APP_PASSWORD.replace(/\s/g, "") },
+});
     await transporter.sendMail({
       from: `"Yogesh's Sales Desk" <${EMAIL_FROM}>`,
       to: EMAIL_TO.join(", "),
