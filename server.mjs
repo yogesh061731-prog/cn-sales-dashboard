@@ -16,7 +16,6 @@ const EMAIL_TO = [
   "mohd.nazim@codingninjas.com",
   "priyanka.jaiswal@codingninjas.com",
   "yogesh.gautam01@codingninjas.com",
-  "harsh.agarwal@codingninjas.com",
 ];
 
 // ── CSV parser ──────────────────────────────────────────────
@@ -348,7 +347,12 @@ const server = http.createServer(async (req, res) => {
       res.end("Test email sent! Check your inbox.");
       return;
     }
-    const filePath = path.join(PUBLIC_DIR, url.pathname === "/" ? "index.html" : url.pathname.slice(1));
+    if (url.pathname.startsWith("/api/")) {
+  res.writeHead(404, { "Content-Type": "text/plain" });
+  res.end("API route not found");
+  return;
+}
+const filePath = path.join(PUBLIC_DIR, url.pathname === "/" ? "index.html" : url.pathname.slice(1));
     if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403); res.end("Forbidden"); return; }
     res.setHeader("Content-Type", contentType(filePath));
     res.end(await fs.readFile(filePath));
