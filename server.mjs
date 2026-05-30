@@ -14,6 +14,7 @@ const EMAIL_FROM = "onboarding@resend.dev";
 const EMAIL_REPLY_TO = "yogesh.gautam01@codingninjas.com";
 const EMAIL_TO = [
   "yogesh061731@gmail.com",
+  "yogesh.gautam01@codingninjas.com",
 ];
 
 // ── CSV parser ──────────────────────────────────────────────
