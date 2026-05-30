@@ -10,13 +10,10 @@ const PORT = Number(process.env.PORT || 4173);
 
 // ── Email config ────────────────────────────────────────────
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
-const EMAIL_FROM = "onboarding@resend.dev";
+const EMAIL_FROM = "yogesh061731@gmail.com";
 const EMAIL_REPLY_TO = "yogesh.gautam01@codingninjas.com";
 const EMAIL_TO = [
-  "azhaan.yezdani@codingninjas.com",
-  "mohd.nazim@codingninjas.com",
-  "priyanka.jaiswal@codingninjas.com",
-  "yogesh.gautam01@codingninjas.com",
+  "yogesh061731@gmail.com",
 ];
 
 // ── CSV parser ──────────────────────────────────────────────
