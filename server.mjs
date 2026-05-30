@@ -157,25 +157,35 @@ async function dashboardData() {
 
   const months = [...new Set(momRows.map(r => r.month))].sort();
   const latestMonth = months.at(-1);
-  return { generatedAt: new Date().toISOString(), dataSource: "Rebuilt MOM + Rebuilt BDE Rankings (live)", latestMonth, latestMonthLabel: monthLabel(latestMonth), months, momRows, bdeRows, sales };
+  return {
+    generatedAt: new Date().toISOString(),
+    dataSource: "Rebuilt MOM + Rebuilt BDE Rankings (live)",
+    latestMonth, latestMonthLabel: monthLabel(latestMonth),
+    months, momRows, bdeRows, sales,
+  };
 }
 
-// ── Email sender (no external deps — uses Gmail SMTP via raw TCP) ──
+// ── Email sender via Resend ─────────────────────────────────
 async function sendEmail(subject, htmlBody) {
-  if (!EMAIL_APP_PASSWORD) { console.log("EMAIL_APP_PASSWORD not set, skipping email"); return; }
+  if (!RESEND_API_KEY) { console.log("RESEND_API_KEY not set, skipping email"); return; }
   try {
-    const { createTransport } = await import("nodemailer");
-    const transporter = createTransport({
-      host: "smtp.gmail.com", port: 465, secure: true,
-      auth: { user: EMAIL_FROM, pass: EMAIL_APP_PASSWORD.replace(/\s/g, "") },
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        to: EMAIL_TO,
+        reply_to: EMAIL_REPLY_TO,
+        subject,
+        html: htmlBody,
+      }),
     });
-    await transporter.sendMail({
-      from: `"Yogesh's Sales Desk" <${EMAIL_FROM}>`,
-      to: EMAIL_TO.join(", "),
-      subject,
-      html: htmlBody,
-    });
-    console.log(`Email sent: ${subject}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data));
+    console.log(`Email sent successfully. ID: ${data.id}`);
   } catch (err) {
     console.error("Email send failed:", err.message);
   }
@@ -189,10 +199,8 @@ function buildEmailHtml(data) {
   const totalTgt = mom.reduce((a, r) => a + r.target, 0);
   const totalPct = totalTgt ? ((totalAch / totalTgt) * 100).toFixed(1) : "0.0";
   const refundAlerts = mom.filter(r => r.refundRate > 0.15);
-
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-
   const achColor = totalAch / totalTgt >= 0.8 ? "#15803d" : totalAch / totalTgt >= 0.5 ? "#b7791f" : "#b42318";
 
   const managerRows = mom.sort((a, b) => b.achievementPct - a.achievementPct).map(r => {
@@ -218,14 +226,10 @@ function buildEmailHtml(data) {
       <div style="color:#15803d;font-weight:600">✅ All refund rates within 15% threshold</div>
     </div>`;
 
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"/></head>
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/></head>
 <body style="margin:0;padding:0;background:#f5f7fb;font-family:Inter,Arial,sans-serif">
   <div style="max-width:600px;margin:0 auto;padding:24px 16px">
-
-    <!-- Header -->
     <div style="background:#101828;border-radius:12px 12px 0 0;padding:24px 28px">
       <div style="display:flex;align-items:center;gap:12px">
         <div style="width:40px;height:40px;background:#e53935;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px">CN</div>
@@ -235,8 +239,6 @@ function buildEmailHtml(data) {
         </div>
       </div>
     </div>
-
-    <!-- Overall KPI -->
     <div style="background:#fff;padding:24px 28px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#687386;margin-bottom:12px">Overall · ${monthLabel(latest)}</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap">
@@ -252,8 +254,6 @@ function buildEmailHtml(data) {
         </div>
       </div>
     </div>
-
-    <!-- Manager table -->
     <div style="background:#fff;padding:0 28px 24px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#687386;padding:20px 0 12px">Manager Breakdown</div>
       <table style="width:100%;border-collapse:collapse;border:1px solid #edf1f6;border-radius:8px;overflow:hidden">
@@ -269,26 +269,20 @@ function buildEmailHtml(data) {
         <tbody>${managerRows}</tbody>
       </table>
     </div>
-
-    <!-- Alert section -->
     <div style="background:#fff;padding:0 28px 8px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">
       ${alertSection}
     </div>
-
-    <!-- Footer -->
     <div style="background:#f5f7fb;border:1px solid #dce3ed;border-top:none;border-radius:0 0 12px 12px;padding:16px 28px;text-align:center">
       <div style="font-size:11px;color:#687386">
-        Auto-generated by <strong>Yogesh's Sales Desk</strong> · Data from Google Sheet · 
+        Auto-generated by <strong>Yogesh's Sales Desk</strong> · Data from Google Sheet ·
         <a href="https://cn-sales-dashboard-production.up.railway.app" style="color:#087f8c">Open Dashboard</a>
       </div>
     </div>
-
   </div>
-</body>
-</html>`;
+</body></html>`;
 }
 
-// ── Daily scheduler — runs at 9:30 AM IST ──────────────────
+// ── Daily scheduler — 9:30 AM IST ──────────────────────────
 function scheduleDaily() {
   function msUntilNext930() {
     const now = new Date();
@@ -298,7 +292,6 @@ function scheduleDaily() {
     if (ist >= next) next.setDate(next.getDate() + 1);
     return next - ist;
   }
-
   async function sendDailySummary() {
     try {
       console.log("Sending daily summary email...");
@@ -310,10 +303,8 @@ function scheduleDaily() {
     } catch (err) {
       console.error("Daily summary failed:", err.message);
     }
-    // Schedule next day
     setTimeout(sendDailySummary, msUntilNext930());
   }
-
   const ms = msUntilNext930();
   const hrs = Math.floor(ms / 3600000);
   const mins = Math.floor((ms % 3600000) / 60000);
@@ -338,13 +329,17 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(await dashboardData()));
       return;
     }
-    // Test email endpoint — hit /api/test-email to send a test
     if (url.pathname === "/api/test-email") {
       const data = await dashboardData();
       const html = buildEmailHtml(data);
       await sendEmail("TEST — Sales Desk Daily Summary", html);
-      res.setHeader("Content-Type", "text/plain");
-      res.end("Test email sent! Check your inbox.");
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.end("Test email sent! Check inboxes of Azhaan, Nazim and Priyanka.");
+      return;
+    }
+    if (url.pathname.startsWith("/api/")) {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("API route not found");
       return;
     }
     const filePath = path.join(PUBLIC_DIR, url.pathname === "/" ? "index.html" : url.pathname.slice(1));
