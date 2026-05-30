@@ -9,13 +9,13 @@ const SHEET_ID = "1tXZjag4kJYqO2ZG5EXwKp559dkUiC3lgoSRiEs1yA-4";
 const PORT = Number(process.env.PORT || 4173);
 
 // ── Email config ────────────────────────────────────────────
-const EMAIL_FROM = process.env.EMAIL_FROM || "yogesh.gautam01@codingninjas.com";
-const EMAIL_APP_PASSWORD = process.env.EMAIL_APP_PASSWORD || "";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const EMAIL_FROM = "onboarding@resend.dev";
+const EMAIL_REPLY_TO = "yogesh.gautam01@codingninjas.com";
 const EMAIL_TO = [
   "azhaan.yezdani@codingninjas.com",
   "mohd.nazim@codingninjas.com",
   "priyanka.jaiswal@codingninjas.com",
-  "yogesh.gautam01@codingninjas.com",
 ];
 
 // ── CSV parser ──────────────────────────────────────────────
@@ -165,11 +165,10 @@ async function sendEmail(subject, htmlBody) {
   if (!EMAIL_APP_PASSWORD) { console.log("EMAIL_APP_PASSWORD not set, skipping email"); return; }
   try {
     const { createTransport } = await import("nodemailer");
-   const transporter = createTransport({
-  host: "smtp.gmail.com", port: 587, secure: false,
-  requireTLS: true,
-  auth: { user: EMAIL_FROM, pass: EMAIL_APP_PASSWORD.replace(/\s/g, "") },
-});
+    const transporter = createTransport({
+      host: "smtp.gmail.com", port: 465, secure: true,
+      auth: { user: EMAIL_FROM, pass: EMAIL_APP_PASSWORD.replace(/\s/g, "") },
+    });
     await transporter.sendMail({
       from: `"Yogesh's Sales Desk" <${EMAIL_FROM}>`,
       to: EMAIL_TO.join(", "),
@@ -348,12 +347,7 @@ const server = http.createServer(async (req, res) => {
       res.end("Test email sent! Check your inbox.");
       return;
     }
-    if (url.pathname.startsWith("/api/")) {
-  res.writeHead(404, { "Content-Type": "text/plain" });
-  res.end("API route not found");
-  return;
-}
-const filePath = path.join(PUBLIC_DIR, url.pathname === "/" ? "index.html" : url.pathname.slice(1));
+    const filePath = path.join(PUBLIC_DIR, url.pathname === "/" ? "index.html" : url.pathname.slice(1));
     if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403); res.end("Forbidden"); return; }
     res.setHeader("Content-Type", contentType(filePath));
     res.end(await fs.readFile(filePath));
