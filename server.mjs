@@ -16,6 +16,7 @@ const EMAIL_TO = [
   "azhaan.yezdani@codingninjas.com",
   "mohd.nazim@codingninjas.com",
   "priyanka.jaiswal@codingninjas.com",
+  "yogesh.gautam01@codingninjas.com",
 ];
 
 // ── CSV parser ──────────────────────────────────────────────
