@@ -13,7 +13,7 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const EMAIL_FROM = "onboarding@resend.dev";
 const EMAIL_REPLY_TO = "yogesh.gautam01@codingninjas.com";
 const EMAIL_TO = [
-  "yogesh061731@gmail.com",
+  "yogeshgautam061731@gmail.com",
 ];
 
 // ── CSV parser ──────────────────────────────────────────────
@@ -189,7 +189,61 @@ async function sendEmail(subject, htmlBody) {
   }
 }
 
-// ── Build daily summary email HTML ─────────────────────────
+// ── WhatsApp config ─────────────────────────────────────────
+const TWILIO_SID = process.env.TWILIO_SID || "";
+const TWILIO_TOKEN = process.env.TWILIO_TOKEN || "";
+const TWILIO_FROM = "whatsapp:+14155238886";
+const WHATSAPP_TO = [
+  "whatsapp:+918178131435", // Yogesh
+];
+
+// ── Send WhatsApp message via Twilio ────────────────────────
+async function sendWhatsApp(message) {
+  if (!TWILIO_SID || !TWILIO_TOKEN) { console.log("Twilio credentials not set, skipping WhatsApp"); return; }
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`;
+  const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString("base64");
+  for (const to of WHATSAPP_TO) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Authorization": `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ From: TWILIO_FROM, To: to, Body: message }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(JSON.stringify(data));
+      console.log(`WhatsApp sent to ${to}. SID: ${data.sid}`);
+    } catch (err) {
+      console.error(`WhatsApp failed for ${to}:`, err.message);
+    }
+  }
+}
+
+// ── Build WhatsApp summary message ──────────────────────────
+function buildWhatsAppMessage(data) {
+  const latest = data.latestMonth;
+  const mom = data.momRows.filter(r => r.month === latest);
+  const totalAch = mom.reduce((a, r) => a + r.achievement, 0);
+  const totalTgt = mom.reduce((a, r) => a + r.target, 0);
+  const totalPct = totalTgt ? ((totalAch / totalTgt) * 100).toFixed(1) : "0.0";
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
+
+  const achEmoji = totalAch / totalTgt >= 0.8 ? "🟢" : totalAch / totalTgt >= 0.5 ? "🟡" : "🔴";
+
+  const managerLines = [...mom].sort((a, b) => b.achievementPct - a.achievementPct).map(r => {
+    const pct = (r.achievementPct * 100).toFixed(1);
+    const emoji = r.achievementPct >= 0.8 ? "🟢" : r.achievementPct >= 0.5 ? "🟡" : "🔴";
+    const deficit = r.mtdDeficit > 0 ? ` | Deficit: ${r.mtdDeficit.toFixed(0)}` : " | ✅ On pace";
+    return `${emoji} *${r.manager}* → ${r.achievement}/${r.target} (${pct}%)${deficit}`;
+  }).join("\n");
+
+  const refundAlerts = mom.filter(r => r.refundRate > 0.15);
+  const alertLines = refundAlerts.length > 0
+    ? `\n⚠️ *REFUND ALERTS*\n${refundAlerts.map(r => `• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate`).join("\n")}`
+    : "\n✅ All refund rates within 15%";
+
+  return `🎯 *Sales Desk — Daily Summary*\n📅 ${dateStr}\n\n*OVERALL* ${achEmoji}\nAchievement: *${totalAch} / ${totalTgt}* (${totalPct}%)\n\n*MANAGER BREAKDOWN*\n${managerLines}${alertLines}\n\n🔗 _Open Dashboard: https://cn-sales-dashboard-production.up.railway.app_`;
+}
 function buildEmailHtml(data) {
   const latest = data.latestMonth;
   const mom = data.momRows.filter(r => r.month === latest);
@@ -292,12 +346,16 @@ function scheduleDaily() {
   }
   async function sendDailySummary() {
     try {
-      console.log("Sending daily summary email...");
+      console.log("Sending daily summary...");
       const data = await dashboardData();
       const html = buildEmailHtml(data);
+      const wa = buildWhatsAppMessage(data);
       const ist = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
       const dateStr = ist.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-      await sendEmail(`Sales Desk · Daily Summary · ${dateStr}`, html);
+      await Promise.all([
+        sendEmail(`Sales Desk · Daily Summary · ${dateStr}`, html),
+        sendWhatsApp(wa),
+      ]);
     } catch (err) {
       console.error("Daily summary failed:", err.message);
     }
@@ -335,7 +393,14 @@ const server = http.createServer(async (req, res) => {
       res.end("Test email sent! Check inboxes of Azhaan, Nazim and Priyanka.");
       return;
     }
-    if (url.pathname.startsWith("/api/")) {
+    if (url.pathname === "/api/test-whatsapp") {
+      const data = await dashboardData();
+      const msg = buildWhatsAppMessage(data);
+      await sendWhatsApp(msg);
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.end("WhatsApp test sent! Check your WhatsApp.");
+      return;
+    }
       res.writeHead(404, { "Content-Type": "text/plain" });
       res.end("API route not found");
       return;
