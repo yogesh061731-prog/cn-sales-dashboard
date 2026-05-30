@@ -295,9 +295,19 @@ function buildWhatsAppMessage(data) {
   }).join("\n");
   const refundAlerts = mom.filter(r => r.refundRate > 0.15);
   const alertLines = refundAlerts.length > 0
-    ? `\n\n\n⚠️ *REFUND ALERTS*\n${refundAlerts.map(r => `• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}%`).join("\n")}`
-    : "\n✅ All refund rates within 15%";
-  return `🎯 *Sales Desk — Daily Summary*\n📅 ${dateStr}\n\n*OVERALL* ${achEmoji}\nAchievement: *${totalAch} / ${totalTgt}* (${totalPct}%)\n\n*MANAGER BREAKDOWN*\n${managerLines}${alertLines}\n\n🔗 _https://cn-sales-dashboard-production.up.railway.app_`;
+    ? `⚠️ *REFUND ALERTS*\n${refundAlerts.map(r => `• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate`).join("\n")}`
+    : `✅ *All refund rates within 15%*`;
+  return `🎯 *Sales Desk — Daily Summary*\n📅 ${dateStr}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `📊 *OVERALL* ${achEmoji}\n` +
+    `Achievement: *${totalAch} / ${totalTgt}* (${totalPct}%)\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `👥 *MANAGER BREAKDOWN*\n` +
+    `${managerLines}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `${alertLines.trim()}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `🔗 _Open Dashboard_\nhttps://cn-sales-dashboard-production.up.railway.app`;
 }
 
 // ── Scheduler — 9:30 AM IST daily ───────────────────────────
