@@ -8,15 +8,19 @@ const PUBLIC_DIR = path.join(__dirname, "public");
 const SHEET_ID = "1tXZjag4kJYqO2ZG5EXwKp559dkUiC3lgoSRiEs1yA-4";
 const PORT = Number(process.env.PORT || 4173);
 
-// ── Email config ────────────────────────────────────────────
+// ── Email config ─────────────────────────────────────────────
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const EMAIL_FROM = "onboarding@resend.dev";
 const EMAIL_REPLY_TO = "yogesh.gautam01@codingninjas.com";
-const EMAIL_TO = [
-  "yogeshgautam061731@gmail.com",
-];
+const EMAIL_TO = ["yogesh061731@gmail.com"]; // temporary until domain verified
 
-// ── CSV parser ──────────────────────────────────────────────
+// ── WhatsApp config ──────────────────────────────────────────
+const TWILIO_SID = process.env.TWILIO_SID || "";
+const TWILIO_TOKEN = process.env.TWILIO_TOKEN || "";
+const TWILIO_FROM = "whatsapp:+14155238886";
+const WHATSAPP_TO = ["whatsapp:+918178131435"];
+
+// ── CSV parser ───────────────────────────────────────────────
 function parseCsv(text) {
   const rows = [];
   let row = [], cell = "", quoted = false;
@@ -59,7 +63,7 @@ function rowsToObjects(rows) {
   });
 }
 
-// ── Fetch a sheet tab ───────────────────────────────────────
+// ── Fetch sheet tab ──────────────────────────────────────────
 async function loadSheetCsv(sheetName) {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
   const response = await fetch(url);
@@ -67,7 +71,7 @@ async function loadSheetCsv(sheetName) {
   return parseCsv(await response.text());
 }
 
-// ── Parse Rebuilt MOM tab ───────────────────────────────────
+// ── Parse Rebuilt MOM ────────────────────────────────────────
 function parseMOM(rows) {
   return rowsToObjects(rows)
     .filter(r => r.month && r.manager && r.month.match(/^\d{4}-\d{2}$/))
@@ -93,7 +97,7 @@ function parseMOM(rows) {
     }));
 }
 
-// ── Parse Rebuilt BDE Rankings tab ─────────────────────────
+// ── Parse Rebuilt BDE Rankings ───────────────────────────────
 function parseBDE(rows) {
   return rowsToObjects(rows)
     .filter(r => r.month && r.manager && r["bde/counsellor"] && r.month.match(/^\d{4}-\d{2}$/))
@@ -115,7 +119,7 @@ function parseBDE(rows) {
     }));
 }
 
-// ── Main data loader ────────────────────────────────────────
+// ── Main data loader ─────────────────────────────────────────
 async function dashboardData() {
   const MANAGERS = ["Azhaan", "Nazim", "Priyanka"];
   const [momRows, bdeRows, ...rawTabs] = await Promise.all([
@@ -123,7 +127,6 @@ async function dashboardData() {
     loadSheetCsv("Rebuilt BDE Rankings").then(parseBDE),
     ...MANAGERS.map(m => loadSheetCsv(m)),
   ]);
-
   const sales = [];
   MANAGERS.forEach((manager, idx) => {
     const rows = rawTabs[idx];
@@ -152,52 +155,29 @@ async function dashboardData() {
       sales.push({ date: dateRaw, month, manager, counsellor: clean(row[1]||""), learner: clean(row[2]||""), amount, bucket, status: statusRaw });
     }
   });
-
   const months = [...new Set(momRows.map(r => r.month))].sort();
   const latestMonth = months.at(-1);
-  return {
-    generatedAt: new Date().toISOString(),
-    dataSource: "Rebuilt MOM + Rebuilt BDE Rankings (live)",
-    latestMonth, latestMonthLabel: monthLabel(latestMonth),
-    months, momRows, bdeRows, sales,
-  };
+  return { generatedAt: new Date().toISOString(), dataSource: "Rebuilt MOM + Rebuilt BDE Rankings (live)", latestMonth, latestMonthLabel: monthLabel(latestMonth), months, momRows, bdeRows, sales };
 }
 
-// ── Email sender via Resend ─────────────────────────────────
+// ── Send email via Resend ────────────────────────────────────
 async function sendEmail(subject, htmlBody) {
   if (!RESEND_API_KEY) { console.log("RESEND_API_KEY not set, skipping email"); return; }
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: EMAIL_FROM,
-        to: EMAIL_TO,
-        reply_to: EMAIL_REPLY_TO,
-        subject,
-        html: htmlBody,
-      }),
+      headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: EMAIL_FROM, to: EMAIL_TO, reply_to: EMAIL_REPLY_TO, subject, html: htmlBody }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(JSON.stringify(data));
-    console.log(`Email sent successfully. ID: ${data.id}`);
+    console.log(`Email sent. ID: ${data.id}`);
   } catch (err) {
     console.error("Email send failed:", err.message);
   }
 }
 
-// ── WhatsApp config ─────────────────────────────────────────
-const TWILIO_SID = process.env.TWILIO_SID || "";
-const TWILIO_TOKEN = process.env.TWILIO_TOKEN || "";
-const TWILIO_FROM = "whatsapp:+14155238886";
-const WHATSAPP_TO = [
-  "whatsapp:+918178131435", // Yogesh
-];
-
-// ── Send WhatsApp message via Twilio ────────────────────────
+// ── Send WhatsApp via Twilio ─────────────────────────────────
 async function sendWhatsApp(message) {
   if (!TWILIO_SID || !TWILIO_TOKEN) { console.log("Twilio credentials not set, skipping WhatsApp"); return; }
   const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`;
@@ -218,32 +198,7 @@ async function sendWhatsApp(message) {
   }
 }
 
-// ── Build WhatsApp summary message ──────────────────────────
-function buildWhatsAppMessage(data) {
-  const latest = data.latestMonth;
-  const mom = data.momRows.filter(r => r.month === latest);
-  const totalAch = mom.reduce((a, r) => a + r.achievement, 0);
-  const totalTgt = mom.reduce((a, r) => a + r.target, 0);
-  const totalPct = totalTgt ? ((totalAch / totalTgt) * 100).toFixed(1) : "0.0";
-  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
-
-  const achEmoji = totalAch / totalTgt >= 0.8 ? "🟢" : totalAch / totalTgt >= 0.5 ? "🟡" : "🔴";
-
-  const managerLines = [...mom].sort((a, b) => b.achievementPct - a.achievementPct).map(r => {
-    const pct = (r.achievementPct * 100).toFixed(1);
-    const emoji = r.achievementPct >= 0.8 ? "🟢" : r.achievementPct >= 0.5 ? "🟡" : "🔴";
-    const deficit = r.mtdDeficit > 0 ? ` | Deficit: ${r.mtdDeficit.toFixed(0)}` : " | ✅ On pace";
-    return `${emoji} *${r.manager}* → ${r.achievement}/${r.target} (${pct}%)${deficit}`;
-  }).join("\n");
-
-  const refundAlerts = mom.filter(r => r.refundRate > 0.15);
-  const alertLines = refundAlerts.length > 0
-    ? `\n⚠️ *REFUND ALERTS*\n${refundAlerts.map(r => `• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate`).join("\n")}`
-    : "\n✅ All refund rates within 15%";
-
-  return `🎯 *Sales Desk — Daily Summary*\n📅 ${dateStr}\n\n*OVERALL* ${achEmoji}\nAchievement: *${totalAch} / ${totalTgt}* (${totalPct}%)\n\n*MANAGER BREAKDOWN*\n${managerLines}${alertLines}\n\n🔗 _Open Dashboard: https://cn-sales-dashboard-production.up.railway.app_`;
-}
+// ── Build email HTML ─────────────────────────────────────────
 function buildEmailHtml(data) {
   const latest = data.latestMonth;
   const mom = data.momRows.filter(r => r.month === latest);
@@ -254,87 +209,98 @@ function buildEmailHtml(data) {
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const achColor = totalAch / totalTgt >= 0.8 ? "#15803d" : totalAch / totalTgt >= 0.5 ? "#b7791f" : "#b42318";
-
   const managerRows = mom.sort((a, b) => b.achievementPct - a.achievementPct).map(r => {
     const pctVal = (r.achievementPct * 100).toFixed(1);
     const color = r.achievementPct >= 0.8 ? "#15803d" : r.achievementPct >= 0.5 ? "#b7791f" : "#b42318";
     const deficitColor = r.mtdDeficit > 0 ? "#b42318" : "#15803d";
-    return `
-      <tr>
-        <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;font-weight:600">${r.manager}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;text-align:center">${r.achievement} / ${r.target}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;text-align:center;color:${color};font-weight:700">${pctVal}%</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;text-align:center;color:${deficitColor};font-weight:600">${r.mtdDeficit.toFixed(1)}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;text-align:center;color:${r.refundRate > 0.15 ? '#b42318' : '#15803d'}">${(r.refundRate * 100).toFixed(1)}%</td>
-      </tr>`;
+    return `<tr>
+      <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;font-weight:600">${r.manager}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;text-align:center">${r.achievement} / ${r.target}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;text-align:center;color:${color};font-weight:700">${pctVal}%</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;text-align:center;color:${deficitColor};font-weight:600">${r.mtdDeficit.toFixed(1)}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;text-align:center;color:${r.refundRate > 0.15 ? '#b42318' : '#15803d'}">${(r.refundRate * 100).toFixed(1)}%</td>
+    </tr>`;
   }).join("");
-
-  const alertSection = refundAlerts.length > 0 ? `
-    <div style="margin:24px 0;padding:16px 20px;background:#fff1f2;border-left:4px solid #b42318;border-radius:6px">
-      <div style="font-weight:700;color:#b42318;margin-bottom:8px">⚠️ Refund Rate Alert (above 15%)</div>
-      ${refundAlerts.map(r => `<div style="color:#b42318;font-size:14px;margin:4px 0">• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate</div>`).join("")}
-    </div>` : `
-    <div style="margin:24px 0;padding:16px 20px;background:#f0fdf4;border-left:4px solid #15803d;border-radius:6px">
-      <div style="color:#15803d;font-weight:600">✅ All refund rates within 15% threshold</div>
-    </div>`;
-
-  return `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"/></head>
+  const alertSection = refundAlerts.length > 0
+    ? `<div style="margin:24px 0;padding:16px 20px;background:#fff1f2;border-left:4px solid #b42318;border-radius:6px">
+        <div style="font-weight:700;color:#b42318;margin-bottom:8px">⚠️ Refund Rate Alert (above 15%)</div>
+        ${refundAlerts.map(r => `<div style="color:#b42318;font-size:14px;margin:4px 0">• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate</div>`).join("")}
+       </div>`
+    : `<div style="margin:24px 0;padding:16px 20px;background:#f0fdf4;border-left:4px solid #15803d;border-radius:6px">
+        <div style="color:#15803d;font-weight:600">✅ All refund rates within 15% threshold</div>
+       </div>`;
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head>
 <body style="margin:0;padding:0;background:#f5f7fb;font-family:Inter,Arial,sans-serif">
-  <div style="max-width:600px;margin:0 auto;padding:24px 16px">
-    <div style="background:#101828;border-radius:12px 12px 0 0;padding:24px 28px">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:40px;height:40px;background:#e53935;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px">CN</div>
-        <div>
-          <div style="color:#fff;font-size:18px;font-weight:700">Yogesh's Sales Desk</div>
-          <div style="color:#8090a8;font-size:12px">Daily Summary · ${dateStr}</div>
-        </div>
-      </div>
-    </div>
-    <div style="background:#fff;padding:24px 28px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#687386;margin-bottom:12px">Overall · ${monthLabel(latest)}</div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap">
-        <div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px">
-          <div style="font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Achievement</div>
-          <div style="font-size:28px;font-weight:700;color:${achColor};margin:6px 0 2px">${totalAch}</div>
-          <div style="font-size:12px;color:#687386">${totalPct}% of ${totalTgt} target</div>
-        </div>
-        <div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px">
-          <div style="font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Total Target</div>
-          <div style="font-size:28px;font-weight:700;color:#14213d;margin:6px 0 2px">${totalTgt}</div>
-          <div style="font-size:12px;color:#687386">${monthLabel(latest)}</div>
-        </div>
-      </div>
-    </div>
-    <div style="background:#fff;padding:0 28px 24px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#687386;padding:20px 0 12px">Manager Breakdown</div>
-      <table style="width:100%;border-collapse:collapse;border:1px solid #edf1f6;border-radius:8px;overflow:hidden">
-        <thead>
-          <tr style="background:#f5f7fb">
-            <th style="padding:10px 14px;text-align:left;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Manager</th>
-            <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Ach / Target</th>
-            <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Ach %</th>
-            <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">MTD Deficit</th>
-            <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Refund %</th>
-          </tr>
-        </thead>
-        <tbody>${managerRows}</tbody>
-      </table>
-    </div>
-    <div style="background:#fff;padding:0 28px 8px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">
-      ${alertSection}
-    </div>
-    <div style="background:#f5f7fb;border:1px solid #dce3ed;border-top:none;border-radius:0 0 12px 12px;padding:16px 28px;text-align:center">
-      <div style="font-size:11px;color:#687386">
-        Auto-generated by <strong>Yogesh's Sales Desk</strong> · Data from Google Sheet ·
-        <a href="https://cn-sales-dashboard-production.up.railway.app" style="color:#087f8c">Open Dashboard</a>
+<div style="max-width:600px;margin:0 auto;padding:24px 16px">
+  <div style="background:#101828;border-radius:12px 12px 0 0;padding:24px 28px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:40px;height:40px;background:#e53935;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px">CN</div>
+      <div>
+        <div style="color:#fff;font-size:18px;font-weight:700">Yogesh's Sales Desk</div>
+        <div style="color:#8090a8;font-size:12px">Daily Summary · ${dateStr}</div>
       </div>
     </div>
   </div>
+  <div style="background:#fff;padding:24px 28px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#687386;margin-bottom:12px">Overall · ${monthLabel(latest)}</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px">
+        <div style="font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Achievement</div>
+        <div style="font-size:28px;font-weight:700;color:${achColor};margin:6px 0 2px">${totalAch}</div>
+        <div style="font-size:12px;color:#687386">${totalPct}% of ${totalTgt} target</div>
+      </div>
+      <div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px">
+        <div style="font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Total Target</div>
+        <div style="font-size:28px;font-weight:700;color:#14213d;margin:6px 0 2px">${totalTgt}</div>
+        <div style="font-size:12px;color:#687386">${monthLabel(latest)}</div>
+      </div>
+    </div>
+  </div>
+  <div style="background:#fff;padding:0 28px 24px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#687386;padding:20px 0 12px">Manager Breakdown</div>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #edf1f6;border-radius:8px;overflow:hidden">
+      <thead><tr style="background:#f5f7fb">
+        <th style="padding:10px 14px;text-align:left;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Manager</th>
+        <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Ach / Target</th>
+        <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Ach %</th>
+        <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">MTD Deficit</th>
+        <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Refund %</th>
+      </tr></thead>
+      <tbody>${managerRows}</tbody>
+    </table>
+  </div>
+  <div style="background:#fff;padding:0 28px 8px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">${alertSection}</div>
+  <div style="background:#f5f7fb;border:1px solid #dce3ed;border-top:none;border-radius:0 0 12px 12px;padding:16px 28px;text-align:center">
+    <div style="font-size:11px;color:#687386">Auto-generated by <strong>Yogesh's Sales Desk</strong> · <a href="https://cn-sales-dashboard-production.up.railway.app" style="color:#087f8c">Open Dashboard</a></div>
+  </div>
+</div>
 </body></html>`;
 }
 
-// ── Daily scheduler — 9:30 AM IST ──────────────────────────
+// ── Build WhatsApp message ───────────────────────────────────
+function buildWhatsAppMessage(data) {
+  const latest = data.latestMonth;
+  const mom = data.momRows.filter(r => r.month === latest);
+  const totalAch = mom.reduce((a, r) => a + r.achievement, 0);
+  const totalTgt = mom.reduce((a, r) => a + r.target, 0);
+  const totalPct = totalTgt ? ((totalAch / totalTgt) * 100).toFixed(1) : "0.0";
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
+  const achEmoji = totalAch / totalTgt >= 0.8 ? "🟢" : totalAch / totalTgt >= 0.5 ? "🟡" : "🔴";
+  const managerLines = [...mom].sort((a, b) => b.achievementPct - a.achievementPct).map(r => {
+    const pct = (r.achievementPct * 100).toFixed(1);
+    const emoji = r.achievementPct >= 0.8 ? "🟢" : r.achievementPct >= 0.5 ? "🟡" : "🔴";
+    const deficit = r.mtdDeficit > 0 ? ` | Deficit: ${r.mtdDeficit.toFixed(0)}` : " | ✅ On pace";
+    return `${emoji} *${r.manager}* → ${r.achievement}/${r.target} (${pct}%)${deficit}`;
+  }).join("\n");
+  const refundAlerts = mom.filter(r => r.refundRate > 0.15);
+  const alertLines = refundAlerts.length > 0
+    ? `\n⚠️ *REFUND ALERTS*\n${refundAlerts.map(r => `• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}%`).join("\n")}`
+    : "\n✅ All refund rates within 15%";
+  return `🎯 *Sales Desk — Daily Summary*\n📅 ${dateStr}\n\n*OVERALL* ${achEmoji}\nAchievement: *${totalAch} / ${totalTgt}* (${totalPct}%)\n\n*MANAGER BREAKDOWN*\n${managerLines}${alertLines}\n\n🔗 _https://cn-sales-dashboard-production.up.railway.app_`;
+}
+
+// ── Scheduler — 9:30 AM IST daily ───────────────────────────
 function scheduleDaily() {
   function msUntilNext930() {
     const now = new Date();
@@ -348,13 +314,11 @@ function scheduleDaily() {
     try {
       console.log("Sending daily summary...");
       const data = await dashboardData();
-      const html = buildEmailHtml(data);
-      const wa = buildWhatsAppMessage(data);
       const ist = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
       const dateStr = ist.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
       await Promise.all([
-        sendEmail(`Sales Desk · Daily Summary · ${dateStr}`, html),
-        sendWhatsApp(wa),
+        sendEmail(`Sales Desk · Daily Summary · ${dateStr}`, buildEmailHtml(data)),
+        sendWhatsApp(buildWhatsAppMessage(data)),
       ]);
     } catch (err) {
       console.error("Daily summary failed:", err.message);
@@ -362,13 +326,11 @@ function scheduleDaily() {
     setTimeout(sendDailySummary, msUntilNext930());
   }
   const ms = msUntilNext930();
-  const hrs = Math.floor(ms / 3600000);
-  const mins = Math.floor((ms % 3600000) / 60000);
-  console.log(`Daily summary scheduled — next send in ${hrs}h ${mins}m`);
+  console.log(`Daily summary scheduled — next send in ${Math.floor(ms/3600000)}h ${Math.floor((ms%3600000)/60000)}m`);
   setTimeout(sendDailySummary, ms);
 }
 
-// ── Static file server ──────────────────────────────────────
+// ── Static file server ───────────────────────────────────────
 function contentType(filePath) {
   if (filePath.endsWith(".html")) return "text/html; charset=utf-8";
   if (filePath.endsWith(".css")) return "text/css; charset=utf-8";
@@ -379,32 +341,36 @@ function contentType(filePath) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://localhost:${PORT}`);
+
     if (url.pathname === "/api/data") {
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.end(JSON.stringify(await dashboardData()));
       return;
     }
+
     if (url.pathname === "/api/test-email") {
       const data = await dashboardData();
-      const html = buildEmailHtml(data);
-      await sendEmail("TEST — Sales Desk Daily Summary", html);
+      await sendEmail("TEST — Sales Desk Daily Summary", buildEmailHtml(data));
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
-      res.end("Test email sent! Check inboxes of Azhaan, Nazim and Priyanka.");
+      res.end("Test email sent! Check your inbox.");
       return;
     }
+
     if (url.pathname === "/api/test-whatsapp") {
       const data = await dashboardData();
-      const msg = buildWhatsAppMessage(data);
-      await sendWhatsApp(msg);
+      await sendWhatsApp(buildWhatsAppMessage(data));
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
-      res.end("WhatsApp test sent! Check your WhatsApp.");
+      res.end("WhatsApp test sent! Check your phone.");
       return;
     }
+
+    if (url.pathname.startsWith("/api/")) {
       res.writeHead(404, { "Content-Type": "text/plain" });
       res.end("API route not found");
       return;
     }
+
     const filePath = path.join(PUBLIC_DIR, url.pathname === "/" ? "index.html" : url.pathname.slice(1));
     if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403); res.end("Forbidden"); return; }
     res.setHeader("Content-Type", contentType(filePath));
