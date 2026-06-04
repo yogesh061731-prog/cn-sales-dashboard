@@ -142,17 +142,56 @@ async function dashboardData() {
       if (c >= 1000) month = `${c}-${String(b).padStart(2,'0')}`;
       else if (a >= 1000) month = `${a}-${String(b).padStart(2,'0')}`;
       if (!month) continue;
-      const statusRaw = clean(row[6] || "");
+
+      const statusRaw = clean(row[6] || ""); // col G = Status
       const sn = statusRaw.toLowerCase().replace(/\s+/g,' ').trim();
       let bucket = "Other";
       if (["full payment recieved","full payment received","manual payment"].includes(sn)) bucket = "Complete/RFD";
       else if (sn === "refund requested") bucket = "Refund Requested";
       else if (sn === "down payment") bucket = "Down Payment";
       else if (sn === "loan in progress") bucket = "Loan In Progress";
+
+      // Parse total amount (col F = index 5)
       const ar = clean(row[5]||"").toLowerCase().replace(/,/g,'').replace(/\s+/g,'');
       const mul = ar.endsWith('k') ? 1000 : 1;
-      const amount = (parseFloat(ar.endsWith('k') ? ar.slice(0,-1) : ar) || 0) * mul;
-      sales.push({ date: dateRaw, month, manager, counsellor: clean(row[1]||""), learner: clean(row[2]||""), amount, bucket, status: statusRaw });
+      const totalAmount = (parseFloat(ar.endsWith('k') ? ar.slice(0,-1) : ar) || 0) * mul;
+
+      // Parse DP amount (col I = index 8)
+      const dpRaw = clean(row[8]||"").toLowerCase().replace(/,/g,'').replace(/\s+/g,'');
+      const dpMul = dpRaw.endsWith('k') ? 1000 : 1;
+      const dpAmount = (parseFloat(dpRaw.endsWith('k') ? dpRaw.slice(0,-1) : dpRaw) || 0) * dpMul;
+
+      // ── Order count rules ──────────────────────────────────
+      let orderCount = 0;
+      if (totalAmount < 100000) {
+        // Low ticket — counts as 0.5 regardless of status
+        orderCount = 0.5;
+      } else if (bucket === "Down Payment") {
+        // DP rules based on DP amount
+        if (dpAmount === 5000) orderCount = 1;
+        else if (dpAmount === 1000) orderCount = 0.8;
+        else if (dpAmount === 2500) orderCount = 0.5;
+        else orderCount = 0;
+      } else if (bucket === "Complete/RFD") {
+        orderCount = 1;
+      }
+
+      // Azhaan self-sale exclusion
+      const counsellor = clean(row[1] || "");
+      const isAzhaanSelfSale = manager === "Azhaan" && counsellor.toLowerCase().trim() === "azhaan";
+      const achievement = isAzhaanSelfSale ? 0 : orderCount;
+
+      sales.push({
+        date: dateRaw, month, manager,
+        counsellor,
+        learner: clean(row[2]||""),
+        amount: totalAmount,
+        dpAmount,
+        bucket,
+        status: statusRaw,
+        orderCount,
+        achievement,
+      });
     }
   });
   const months = [...new Set(momRows.map(r => r.month))].sort();
