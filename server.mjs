@@ -40,7 +40,7 @@ function parseCsv(text) {
 }
 
 function clean(v) { return String(v ?? "").trim(); }
-function norm(v) { return clean(v).toLowerCase().replace(/\s+/g, " "); }
+function norm(v) { return clean(v).toLowerCase().replace(/[\s\n\r]+/g, " "); }
 function parseNum(v) { return parseFloat(clean(v).replace(/,/g, "")) || 0; }
 function parsePct(v) {
   const s = clean(v);
@@ -63,6 +63,21 @@ function rowsToObjects(rows) {
   });
 }
 
+// ── Flexible header finder (handles multiline headers) ───────
+function findVal(r, ...keywords) {
+  // Try exact match first
+  for (const kw of keywords) {
+    if (r[kw] !== undefined) return r[kw];
+  }
+  // Fallback: find key containing all words from any keyword phrase
+  for (const kw of keywords) {
+    const words = kw.split(" ").filter(Boolean);
+    const found = Object.entries(r).find(([k]) => words.every(w => k.includes(w)));
+    if (found) return found[1];
+  }
+  return "";
+}
+
 // ── Fetch sheet tab ──────────────────────────────────────────
 async function loadSheetCsv(sheetName) {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
@@ -76,24 +91,26 @@ function parseMOM(rows) {
   return rowsToObjects(rows)
     .filter(r => r.month && r.manager && r.month.match(/^\d{4}-\d{2}$/))
     .map(r => ({
-      month: r.month, monthLabel: monthLabel(r.month), manager: r.manager,
-      totalEntries: parseNum(r["total dump entries"]),
-      complete: parseNum(r["complete/rfd"]),
-      achievement: parseNum(r["achievement sales"]),
-      refunds: parseNum(r.refunds),
-      downPayment: parseNum(r["down payment"]),
-      loanInProgress: parseNum(r["loan in progress"]),
-      completedAmount: parseNum(r["completed amount"]),
-      target: parseNum(r.target),
-      achievementPct: parsePct(r["achievement %"]),
-      refundRate: parsePct(r["refund rate"]),
-      activeBdes: parseNum(r["active bdes"]),
-      productivity: parseNum(r["productivity/bde"]),
-      totalWorkingDays: parseNum(r["total working days"]),
-      workingDaysElapsed: parseNum(r["working days elapsed"]),
-      targetTillDate: parseNum(r["target till date"]),
-      mtdDeficit: parseNum(r["mtd deficit"]),
-      requiredDrr: parseNum(r["required drr"]),
+      month: r.month,
+      monthLabel: monthLabel(r.month),
+      manager: r.manager,
+      totalEntries: parseNum(findVal(r, "total dump entries")),
+      complete: parseNum(findVal(r, "complete/rfd")),
+      achievement: parseNum(findVal(r, "achievement count")),
+      refunds: parseNum(findVal(r, "refunds")),
+      downPayment: parseNum(findVal(r, "down payment")),
+      loanInProgress: parseNum(findVal(r, "loan in progress")),
+      completedAmount: parseNum(findVal(r, "completed amount")),
+      target: parseNum(findVal(r, "target")),
+      achievementPct: parsePct(findVal(r, "achievement %")),
+      refundRate: parsePct(findVal(r, "refund rate")),
+      activeBdes: parseNum(findVal(r, "active bdes")),
+      productivity: parseNum(findVal(r, "productivity/bde")),
+      totalWorkingDays: parseNum(findVal(r, "total working days")),
+      workingDaysElapsed: parseNum(findVal(r, "working days elapsed")),
+      targetTillDate: parseNum(findVal(r, "target till date")),
+      mtdDeficit: parseNum(findVal(r, "mtd deficit")),
+      requiredDrr: parseNum(findVal(r, "required drr")),
     }));
 }
 
@@ -102,20 +119,23 @@ function parseBDE(rows) {
   return rowsToObjects(rows)
     .filter(r => r.month && r.manager && r["bde/counsellor"] && r.month.match(/^\d{4}-\d{2}$/))
     .map(r => ({
-      month: r.month, manager: r.manager,
-      counsellor: r["bde/counsellor"], counsellorKey: r["counsellor key"],
-      totalEntries: parseNum(r["total dump entries"]),
-      complete: parseNum(r["complete/rfd"]),
-      achievement: parseNum(r["achievement sales"]),
-      refunds: parseNum(r.refunds),
-      downPayment: parseNum(r["down payment"]),
-      loanInProgress: parseNum(r["loan in progress"]),
-      completedAmount: parseNum(r["completed amount"]),
-      target: parseNum(r.target),
-      achievementPct: parsePct(r["achievement %"]),
-      refundRate: parsePct(r["refund rate"]),
-      overallRank: parseNum(r["overall rank"]),
-      status: clean(r["status flag"] || r.status || ""),
+      month: r.month,
+      manager: r.manager,
+      counsellor: r["bde/counsellor"],
+      counsellorKey: r["counsellor key"],
+      totalEntries: parseNum(findVal(r, "total dump entries")),
+      complete: parseNum(findVal(r, "complete/rfd")),
+      orderCount: parseNum(findVal(r, "order count")),
+      achievement: parseNum(findVal(r, "achievement count")),
+      refunds: parseNum(findVal(r, "refunds")),
+      downPayment: parseNum(findVal(r, "down payment")),
+      loanInProgress: parseNum(findVal(r, "loan in progress")),
+      completedAmount: parseNum(findVal(r, "completed amount")),
+      target: parseNum(findVal(r, "target")),
+      achievementPct: parsePct(findVal(r, "achievement %")),
+      refundRate: parsePct(findVal(r, "refund rate")),
+      overallRank: parseNum(findVal(r, "overall rank")),
+      status: findVal(r, "status flag", "status"),
     }));
 }
 
@@ -127,6 +147,7 @@ async function dashboardData() {
     loadSheetCsv("Rebuilt BDE Rankings").then(parseBDE),
     ...MANAGERS.map(m => loadSheetCsv(m)),
   ]);
+
   const sales = [];
   MANAGERS.forEach((manager, idx) => {
     const rows = rawTabs[idx];
@@ -151,23 +172,21 @@ async function dashboardData() {
       else if (sn === "down payment") bucket = "Down Payment";
       else if (sn === "loan in progress") bucket = "Loan In Progress";
 
-      // Parse total amount (col F = index 5)
+      // Total amount (col F = index 5)
       const ar = clean(row[5]||"").toLowerCase().replace(/,/g,'').replace(/\s+/g,'');
       const mul = ar.endsWith('k') ? 1000 : 1;
       const totalAmount = (parseFloat(ar.endsWith('k') ? ar.slice(0,-1) : ar) || 0) * mul;
 
-      // Parse DP amount (col I = index 8)
+      // DP amount (col I = index 8)
       const dpRaw = clean(row[8]||"").toLowerCase().replace(/,/g,'').replace(/\s+/g,'');
       const dpMul = dpRaw.endsWith('k') ? 1000 : 1;
       const dpAmount = (parseFloat(dpRaw.endsWith('k') ? dpRaw.slice(0,-1) : dpRaw) || 0) * dpMul;
 
-      // ── Order count rules ──────────────────────────────────
+      // Order count rules
       let orderCount = 0;
       if (totalAmount < 100000) {
-        // Low ticket — counts as 0.5 regardless of status
         orderCount = 0.5;
       } else if (bucket === "Down Payment") {
-        // DP rules based on DP amount
         if (dpAmount === 5000) orderCount = 1;
         else if (dpAmount === 1000) orderCount = 0.8;
         else if (dpAmount === 2500) orderCount = 0.5;
@@ -176,27 +195,27 @@ async function dashboardData() {
         orderCount = 1;
       }
 
-      // Azhaan self-sale exclusion
       const counsellor = clean(row[1] || "");
       const isAzhaanSelfSale = manager === "Azhaan" && counsellor.toLowerCase().trim() === "azhaan";
       const achievement = isAzhaanSelfSale ? 0 : orderCount;
 
       sales.push({
-        date: dateRaw, month, manager,
-        counsellor,
+        date: dateRaw, month, manager, counsellor,
         learner: clean(row[2]||""),
-        amount: totalAmount,
-        dpAmount,
-        bucket,
-        status: statusRaw,
-        orderCount,
-        achievement,
+        amount: totalAmount, dpAmount, bucket,
+        status: statusRaw, orderCount, achievement,
       });
     }
   });
+
   const months = [...new Set(momRows.map(r => r.month))].sort();
   const latestMonth = months.at(-1);
-  return { generatedAt: new Date().toISOString(), dataSource: "Rebuilt MOM + Rebuilt BDE Rankings (live)", latestMonth, latestMonthLabel: monthLabel(latestMonth), months, momRows, bdeRows, sales };
+  return {
+    generatedAt: new Date().toISOString(),
+    dataSource: "Rebuilt MOM + Rebuilt BDE Rankings (live)",
+    latestMonth, latestMonthLabel: monthLabel(latestMonth),
+    months, momRows, bdeRows, sales,
+  };
 }
 
 // ── Send email via Resend ────────────────────────────────────
@@ -248,7 +267,7 @@ function buildEmailHtml(data) {
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const achColor = totalAch / totalTgt >= 0.8 ? "#15803d" : totalAch / totalTgt >= 0.5 ? "#b7791f" : "#b42318";
-  const managerRows = mom.sort((a, b) => b.achievementPct - a.achievementPct).map(r => {
+  const managerRows = [...mom].sort((a, b) => b.achievementPct - a.achievementPct).map(r => {
     const pctVal = (r.achievementPct * 100).toFixed(1);
     const color = r.achievementPct >= 0.8 ? "#15803d" : r.achievementPct >= 0.5 ? "#b7791f" : "#b42318";
     const deficitColor = r.mtdDeficit > 0 ? "#b42318" : "#15803d";
@@ -285,7 +304,7 @@ function buildEmailHtml(data) {
     <div style="display:flex;gap:16px;flex-wrap:wrap">
       <div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px">
         <div style="font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Achievement</div>
-        <div style="font-size:28px;font-weight:700;color:${achColor};margin:6px 0 2px">${totalAch}</div>
+        <div style="font-size:28px;font-weight:700;color:${achColor};margin:6px 0 2px">${totalAch.toFixed(1)}</div>
         <div style="font-size:12px;color:#687386">${totalPct}% of ${totalTgt} target</div>
       </div>
       <div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px">
@@ -329,8 +348,8 @@ function buildWhatsAppMessage(data) {
   const managerLines = [...mom].sort((a, b) => b.achievementPct - a.achievementPct).map(r => {
     const pct = (r.achievementPct * 100).toFixed(1);
     const emoji = r.achievementPct >= 0.8 ? "🟢" : r.achievementPct >= 0.5 ? "🟡" : "🔴";
-    const deficit = r.mtdDeficit > 0 ? ` | Deficit: ${r.mtdDeficit.toFixed(0)}` : " | ✅ On pace";
-    return `${emoji} *${r.manager}* → ${r.achievement}/${r.target} (${pct}%)${deficit}`;
+    const deficit = r.mtdDeficit > 0 ? ` | Deficit: ${r.mtdDeficit.toFixed(1)}` : " | ✅ On pace";
+    return `${emoji} *${r.manager}* → ${r.achievement.toFixed(1)}/${r.target} (${pct}%)${deficit}`;
   }).join("\n");
   const refundAlerts = mom.filter(r => r.refundRate > 0.15);
   const alertLines = refundAlerts.length > 0
@@ -339,7 +358,7 @@ function buildWhatsAppMessage(data) {
   return `🎯 *Sales Desk — Daily Summary*\n📅 ${dateStr}\n\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
     `📊 *OVERALL* ${achEmoji}\n` +
-    `Achievement: *${totalAch} / ${totalTgt}* (${totalPct}%)\n\n` +
+    `Achievement: *${totalAch.toFixed(1)} / ${totalTgt}* (${totalPct}%)\n\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
     `👥 *MANAGER BREAKDOWN*\n` +
     `${managerLines}\n\n` +
@@ -397,7 +416,6 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(await dashboardData()));
       return;
     }
-
     if (url.pathname === "/api/test-email") {
       const data = await dashboardData();
       await sendEmail("TEST — Sales Desk Daily Summary", buildEmailHtml(data));
@@ -405,7 +423,6 @@ const server = http.createServer(async (req, res) => {
       res.end("Test email sent! Check your inbox.");
       return;
     }
-
     if (url.pathname === "/api/test-whatsapp") {
       const data = await dashboardData();
       await sendWhatsApp(buildWhatsAppMessage(data));
@@ -413,7 +430,6 @@ const server = http.createServer(async (req, res) => {
       res.end("WhatsApp test sent! Check your phone.");
       return;
     }
-
     if (url.pathname.startsWith("/api/")) {
       res.writeHead(404, { "Content-Type": "text/plain" });
       res.end("API route not found");
