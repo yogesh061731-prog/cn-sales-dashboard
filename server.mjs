@@ -78,8 +78,8 @@ function parseMOM(rows) {
     .map(r => ({
       month: r.month, monthLabel: monthLabel(r.month), manager: r.manager,
       totalEntries: parseNum(r["total dump entries"]),
-      complete: parseNum(r["complete/rfd"]),
-      achievement: parseNum(r["achievement sales"]),
+      complete: parseNum(r["complete/rfd"] || r["order count"]),
+      achievement: parseNum(r["achievement count"] || r["achievement sales"]),
       refunds: parseNum(r.refunds),
       downPayment: parseNum(r["down payment"]),
       loanInProgress: parseNum(r["loan in progress"]),
