@@ -16,20 +16,16 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:var(--page);color:var(--ink);font-size:13px;line-height:1.5}
-
-/* Login */
 #loginScreen{position:fixed;inset:0;background:#101828;display:flex;align-items:center;justify-content:center;z-index:9999}
 .login-box{background:#1a2235;border:1px solid #2a3347;border-radius:16px;padding:40px 36px;width:100%;max-width:380px;text-align:center}
 .login-logo{width:52px;height:52px;background:var(--brand);border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:18px;color:#fff;margin:0 auto 20px}
 .login-title{font-size:22px;font-weight:700;color:#fff;margin-bottom:6px}
 .login-sub{font-size:13px;color:#8090a8;margin-bottom:28px}
-.login-input{width:100%;height:44px;background:#0d1626;border:1px solid #2a3347;border-radius:8px;color:#fff;font-size:15px;padding:0 16px;outline:none;letter-spacing:2px;text-align:center}
+.login-input{width:100%;height:44px;background:#0d1626;border:1px solid #2a3347;border-radius:8px;color:#fff;font-size:15px;padding:0 16px;outline:none;text-align:center}
 .login-input:focus{border-color:var(--brand)}
 .login-btn{width:100%;height:44px;background:var(--brand);border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px}
 .login-btn:hover{background:#c62828}
 .login-err{color:#f87171;font-size:13px;margin-top:10px;min-height:20px}
-
-/* Shell */
 .shell{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:100vh}
 .sidebar{background:var(--nav);color:#d8dee9;padding:20px 16px;display:flex;flex-direction:column;gap:24px;position:sticky;top:0;height:100vh;overflow:auto}
 .brand{display:flex;align-items:center;gap:10px}
@@ -40,13 +36,9 @@ nav a{color:#a6b0c3;text-decoration:none;padding:9px 10px;border-radius:7px;font
 nav a:hover{background:rgba(255,255,255,.1);color:#fff}
 .rule-box{margin-top:auto;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.04);font-size:11px;color:#8090a8;display:grid;gap:6px}
 .rule-box strong{color:#c8d0de;font-size:12px}
-
-/* Mobile nav */
 .mob-nav{display:none;background:var(--nav);padding:0 16px;overflow-x:auto;white-space:nowrap;border-bottom:1px solid #1e2d42}
 .mob-nav a{display:inline-block;color:#a6b0c3;text-decoration:none;padding:12px 14px;font-size:12px;font-weight:600;border-bottom:2px solid transparent;min-height:44px;line-height:20px}
 .mob-nav a:hover{color:#fff;border-bottom-color:var(--brand)}
-
-/* Content */
 .content{padding:24px;display:grid;gap:18px;align-content:start}
 .topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
 .eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;margin-bottom:4px}
@@ -58,22 +50,16 @@ select,button{height:44px;border:1px solid var(--line);border-radius:7px;backgro
 select{padding:0 28px 0 10px}
 button{padding:0 14px;cursor:pointer;font-weight:600}
 button.primary{background:var(--ink);color:var(--page);border-color:var(--ink)}
-
-/* KPI */
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
 .kpi-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .kpi-value{font-size:26px;font-weight:700;margin:6px 0 2px;line-height:1}
 .kpi-sub{font-size:11px;color:var(--muted)}
-
-/* Panels */
 .panel-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:var(--shadow)}
 .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px}
 .pill{border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--muted)}
 .pill.live{background:#e6faf0;color:#15803d;border-color:#a3e6bc}
-
-/* Tables */
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;min-width:480px}
 th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;font-size:12px}
@@ -82,8 +68,6 @@ td.r,th.r{text-align:right}
 .bar-track{height:6px;border-radius:3px;background:#edf1f6;overflow:hidden;min-width:70px}
 .bar-fill{height:100%;border-radius:inherit}
 .good{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}
-
-/* Cards */
 .pace-list,.status-list{display:grid;gap:10px}
 .pace-card,.status-card{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:8px}
 .pace-head{display:flex;justify-content:space-between;align-items:center}
@@ -96,14 +80,10 @@ td.r,th.r{text-align:right}
 .rank-badge.gold{background:#fef3c7;color:#b45309}
 .rank-badge.silver{background:#f1f5f9;color:#475569}
 .rank-badge.bronze{background:#fdf1e8;color:#c2410c}
-
-/* States */
 .loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);gap:10px;font-size:13px}
 .spinner{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .err{background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:14px;color:var(--red);font-size:13px;line-height:1.6}
-
-/* Modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal{background:var(--panel);border-radius:12px;padding:20px;width:100%;max-width:700px;max-height:85vh;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .modal-head{display:flex;justify-content:space-between;align-items:center}
@@ -118,39 +98,31 @@ td.r,th.r{text-align:right}
 .ftab:hover{border-color:var(--ink);color:var(--ink)}
 .ftab.active{background:var(--ink);color:var(--page);border-color:var(--ink)}
 @media(max-width:900px){
-  .shell{grid-template-columns:1fr}
-  .sidebar{display:none}
-  .mob-nav{display:block}
-  .panel-row{grid-template-columns:1fr}
-  .content{padding:14px;gap:14px}
-  h1{font-size:20px}
+  .shell{grid-template-columns:1fr}.sidebar{display:none}.mob-nav{display:block}
+  .panel-row{grid-template-columns:1fr}.content{padding:14px;gap:14px}.h1{font-size:20px}
 }
 @media(max-width:560px){
-  .kpi-grid{grid-template-columns:1fr 1fr}
-  .kpi-value{font-size:22px}
+  .kpi-grid{grid-template-columns:1fr 1fr}.kpi-value{font-size:22px}
   .controls{display:grid;grid-template-columns:1fr auto;gap:8px}
   td:first-child,th:first-child{position:sticky;left:0;background:var(--panel);z-index:1}
-  .login-box{margin:16px;padding:28px 20px}
-  .content{padding-bottom:32px}
+  .login-box{margin:16px;padding:28px 20px}.content{padding-bottom:32px}
 }
 </style>
 </head>
 <body>
 
-<!-- Login Screen -->
 <div id="loginScreen">
   <div class="login-box">
     <div class="login-logo">CN</div>
     <div class="login-title">Yogesh's Sales Desk</div>
     <div class="login-sub">Coding Ninjas · Senior Manager Dashboard</div>
-    <input class="login-input" id="emailInput" type="email" placeholder="Enter your email" style="margin-bottom:10px;letter-spacing:0"/>
+    <input class="login-input" id="emailInput" type="email" placeholder="Enter your email" style="margin-bottom:10px"/>
     <input class="login-input" id="pwdInput" type="password" placeholder="Enter password" maxlength="20"/>
     <button class="login-btn" onclick="checkPwd()">Unlock Dashboard</button>
     <div class="login-err" id="loginErr"></div>
   </div>
 </div>
 
-<!-- Lead detail modal -->
 <div class="modal-overlay" id="modalOverlay" style="display:none" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <div class="modal-head">
@@ -160,9 +132,7 @@ td.r,th.r{text-align:right}
     <div class="modal-body">
       <div class="table-wrap">
         <table>
-          <thead><tr>
-            <th>Date</th><th>Manager</th><th>BDE</th><th>Learner</th><th>Status</th><th class="r">Amount</th>
-          </tr></thead>
+          <thead><tr><th>Date</th><th>Manager</th><th>BDE</th><th>Learner</th><th>Status</th><th class="r">Amount</th></tr></thead>
           <tbody id="modalRows"></tbody>
         </table>
       </div>
@@ -171,7 +141,6 @@ td.r,th.r{text-align:right}
 </div>
 
 <div class="shell">
-  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="brand">
       <div class="bmark">CN</div>
@@ -192,7 +161,6 @@ td.r,th.r{text-align:right}
   </aside>
 
   <main class="content" id="mainContent">
-    <!-- Mobile nav -->
     <div class="mob-nav">
       <a onclick="goTo('kpiGrid')">📊 Overview</a>
       <a onclick="goTo('momSection')">📅 MOM</a>
@@ -207,7 +175,7 @@ td.r,th.r{text-align:right}
 
       <div class="topbar">
         <div>
-          <p class="eyebrow" id="eyebrow">Sales Desk · May 2026</p>
+          <p class="eyebrow" id="eyebrow">Sales Desk · Jun 2026</p>
           <h1>Team Performance</h1>
         </div>
         <div class="controls">
@@ -245,7 +213,7 @@ td.r,th.r{text-align:right}
         <div class="panel">
           <div class="panel-head">
             <div><p class="eyebrow">Leaderboard</p><h2>Top BDEs — Achievement %</h2></div>
-            <div class="filter-tabs" id="managerFilter">
+            <div class="filter-tabs">
               <button class="ftab active" onclick="setFilter('All')">All</button>
               <button class="ftab" onclick="setFilter('Azhaan')">Azhaan</button>
               <button class="ftab" onclick="setFilter('Nazim')">Nazim</button>
@@ -287,34 +255,43 @@ const ALLOWED_EMAILS=[
   'azhaan.yezdani@codingninjas.com',
   'harsh.agarwal@codingninjas.com',
 ];
+
+// ── Formatters ───────────────────────────────────────────────
+const fmt=v=>new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
+const fmtAch=v=>{const n=Number(v)||0;return n%1===0?n.toString():n.toFixed(1);};
 const pct=v=>(((v||0)*100).toFixed(1))+'%';
 const money=v=>'₹'+fmt(v);
 const clsPct=v=>v>=0.8?'good':v>=0.5?'warn':'bad';
 const barColor=v=>v>=0.8?'#15803d':v>=0.5?'#b7791f':'#087f8c';
+
 function mlabel(k){
   if(!k||!k.includes('-'))return k;
   const[y,mo]=k.split('-').map(Number);
   return new Intl.DateTimeFormat('en',{month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(y,mo-1,1)));
 }
+function parseDateToTs(s){
+  if(!s)return 0;
+  const str=String(s).trim();
+  const sep=str.includes('/')?'/':'-';
+  const p=str.split(sep);
+  if(p.length===3){
+    const a=Number(p[0]),b=Number(p[1]),c=Number(p[2]);
+    if(c>=1000)return new Date(c,b-1,a).getTime();
+    if(a>=1000)return new Date(a,b-1,c).getTime();
+  }
+  const d=new Date(str);return isNaN(d)?0:d.getTime();
+}
 
-let state={mom:[],bde:[],month:null};
-let trendChart=null,statusChart=null;
+let state={mom:[],bde:[],sales:[],month:null};
+let trendChart=null,statusChart=null,activeFilter='All';
 
-/* ── Auth ── */
+// ── Auth ─────────────────────────────────────────────────────
 function checkPwd(){
   const email=document.getElementById('emailInput').value.trim().toLowerCase();
   const pwd=document.getElementById('pwdInput').value;
-  const errEl=document.getElementById('loginErr');
-  if(!ALLOWED_EMAILS.includes(email)){
-    errEl.textContent='This email is not authorised to access this dashboard.';
-    return;
-  }
-  if(pwd!=='CN2026'){
-    errEl.textContent='Incorrect password. Try again.';
-    document.getElementById('pwdInput').value='';
-    document.getElementById('pwdInput').focus();
-    return;
-  }
+  const err=document.getElementById('loginErr');
+  if(!ALLOWED_EMAILS.includes(email)){err.textContent='This email is not authorised.';return;}
+  if(pwd!=='CN2026'){err.textContent='Incorrect password.';document.getElementById('pwdInput').value='';document.getElementById('pwdInput').focus();return;}
   document.getElementById('loginScreen').style.display='none';
   sessionStorage.setItem('cn_auth','1');
   sessionStorage.setItem('cn_email',email);
@@ -323,7 +300,7 @@ function checkPwd(){
 document.getElementById('emailInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pwdInput').focus();});
 document.getElementById('pwdInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkPwd();});
 
-/* ── Load data from server ── */
+// ── Load data ────────────────────────────────────────────────
 async function loadAll(){
   document.getElementById('loadingState').style.display='flex';
   document.getElementById('errorState').style.display='none';
@@ -353,6 +330,7 @@ async function loadAll(){
       achPct:r.achievementPct,refRate:r.refundRate,
       rank:r.overallRank,status:r.status,
     }));
+    state.sales=json.sales||[];
     const months=[...new Set(state.mom.map(r=>r.month))].sort();
     if(!state.month||!months.includes(state.month))state.month=months.at(-1);
     renderAll(months);
@@ -368,7 +346,7 @@ async function loadAll(){
   }
 }
 
-/* ── Render ── */
+// ── Render ───────────────────────────────────────────────────
 function renderAll(months){
   const all=months||[...new Set(state.mom.map(r=>r.month))].sort();
   const sel=document.getElementById('monthSelect');
@@ -376,12 +354,7 @@ function renderAll(months){
   document.getElementById('eyebrow').textContent=`Sales Desk · ${mlabel(state.month)}`;
   const mMom=state.mom.filter(r=>r.month===state.month);
   const mBde=state.bde.filter(r=>r.month===state.month);
-  renderKPI(mMom);
-  renderMOM(mMom);
-  renderPace(mMom);
-  renderLeader(mBde);
-  renderStatus(mMom);
-  renderTrend(state.mom);
+  renderKPI(mMom);renderMOM(mMom);renderPace(mMom);renderLeader(mBde);renderStatus(mMom);renderTrend(state.mom);
 }
 
 function renderKPI(rows){
@@ -419,13 +392,6 @@ function renderMOM(rows){
     <td class="r">${r.reqDrr.toFixed(1)}</td>
     <td class="r ${r.refRate>=0.2?'bad':'good'}">${pct(r.refRate)}</td>
   </tr>`).join('');
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,r.achPct*100).toFixed(1)}%;background:${barColor(r.achPct)}"></div></div>
-      <span class="${clsPct(r.achPct)}" style="font-size:11px">${pct(r.achPct)}</span>
-    </td>
-    <td class="r ${r.deficit>0?'bad':'good'}">${r.deficit.toFixed(1)}</td>
-    <td class="r">${r.reqDrr.toFixed(1)}</td>
-    <td class="r ${r.refRate>=0.2?'bad':'good'}">${pct(r.refRate)}</td>
-  </tr>`).join('');
 }
 
 function renderPace(rows){
@@ -440,13 +406,10 @@ function renderPace(rows){
     </div>`).join('');
 }
 
-let activeFilter='All';
-
 function setFilter(manager){
   activeFilter=manager;
-  document.querySelectorAll('.ftab').forEach(b=>b.classList.toggle('active', b.textContent===manager));
-  const mBde=state.bde.filter(r=>r.month===state.month);
-  renderLeader(mBde);
+  document.querySelectorAll('.ftab').forEach(b=>b.classList.toggle('active',b.textContent===manager));
+  renderLeader(state.bde.filter(r=>r.month===state.month));
 }
 
 function renderLeader(rows){
@@ -455,7 +418,7 @@ function renderLeader(rows){
   document.getElementById('leaderRows').innerHTML=top.map((r,i)=>{
     const bc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
     const st=r.status||(r.achPct>=1?'Ahead':r.achPct>=0.75?'On Track':r.refRate>=0.25?'At Risk':'Behind');
-    const sc=st==='Ahead'?'good':st==='On Track'?'warn':st==='At Risk'?'bad':'';
+    const sc=st==='Ahead'?'good':st==='On Track'?'warn':st==='At Risk'||st==='Behind'?'bad':'';
     return`<tr>
       <td><span class="rank-badge ${bc}">${i+1}</span></td>
       <td><strong>${r.counsellor}</strong></td><td>${r.manager}</td>
@@ -470,37 +433,34 @@ function renderLeader(rows){
   }).join('');
 }
 
-function openModal(bucket, salesRows){
-  const filtered=salesRows.filter(r=>r.bucket===bucket)
-    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+function showLeads(bucket){
+  const salesForMonth=(state.sales||[]).filter(r=>r.month===state.month);
+  openModal(bucket,salesForMonth);
+}
+function openModal(bucket,salesRows){
+  const n=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+  let filtered=(salesRows||[]).filter(r=>n(r.bucket)===n(bucket));
+  if(!filtered.length){
+    const kw=n(bucket).split(/\W+/).filter(Boolean);
+    filtered=(salesRows||[]).filter(r=>kw.some(k=>n(r.bucket||'').includes(k)));
+  }
+  filtered.sort((a,b)=>parseDateToTs(b.date)-parseDateToTs(a.date));
   document.getElementById('modalTitle').textContent=`${bucket} — ${filtered.length} lead${filtered.length!==1?'s':''}`;
-  const money=v=>'₹'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
   document.getElementById('modalRows').innerHTML=filtered.length
     ? filtered.map(r=>`<tr>
-        <td>${r.date}</td>
-        <td>${r.manager}</td>
-        <td>${r.counsellor}</td>
-        <td>${r.learner}</td>
-        <td><span class="${r.bucket==='Complete/RFD'?'good':r.bucket==='Refund Requested'?'bad':'warn'}">${r.bucket}</span></td>
-        <td class="r">${money(r.amount)}</td>
+        <td>${r.date}</td><td>${r.manager}</td><td>${r.counsellor}</td><td>${r.learner}</td>
+        <td><span class="${n(r.bucket)==='complete/rfd'?'good':n(r.bucket)==='refund requested'?'bad':'warn'}">${r.bucket}</span></td>
+        <td class="r">₹${fmt(r.amount)}</td>
       </tr>`).join('')
     : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No records found</td></tr>';
   document.getElementById('modalOverlay').style.display='flex';
 }
-
-function closeModal(){
-  document.getElementById('modalOverlay').style.display='none';
-}
-
+function closeModal(){document.getElementById('modalOverlay').style.display='none';}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 function renderStatus(rows){
   const t={c:0,r:0,d:0,l:0,tot:0};
   for(const r of rows){t.c+=r.complete;t.r+=r.refunds;t.d+=r.down;t.l+=r.loan;t.tot+=r.entries;}
-  // Get current month sales for modal details
-  const monthSales=state.bde
-    .filter(r=>r.month===state.month)
-    .flatMap(r=>r._rawSales||[]);
   const items=[
     ['Complete / RFD',t.c,'#15803d','Complete/RFD'],
     ['Refund Requested',t.r,'#b42318','Refund Requested'],
@@ -509,8 +469,7 @@ function renderStatus(rows){
   ];
   document.getElementById('statusSplit').innerHTML=items.map(([lbl,val,col,bucket])=>`
     <div class="status-card" onclick="showLeads('${bucket}')">
-      <div class="status-head">
-        <strong>${lbl}</strong>
+      <div class="status-head"><strong>${lbl}</strong>
         <span style="display:flex;align-items:center;gap:6px">
           <span style="color:${col};font-weight:700">${fmt(val)}</span>
           <span style="font-size:10px;color:var(--muted)">tap for details →</span>
@@ -534,13 +493,10 @@ function renderTrend(momRows){
   if(trendChart)trendChart.destroy();
   trendChart=new Chart(document.getElementById('trendChart'),{
     type:'bar',
-    data:{
-      labels:all.map(mlabel),
-      datasets:[
-        {label:'Achievement',data:all.map(m=>momRows.filter(r=>r.month===m).reduce((a,r)=>a+r.achievement,0)),backgroundColor:'rgba(8,127,140,.75)',borderRadius:4},
-        {label:'Target',data:all.map(m=>momRows.filter(r=>r.month===m).reduce((a,r)=>a+r.target,0)),type:'line',borderColor:'#b42318',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#b42318',tension:.3}
-      ]
-    },
+    data:{labels:all.map(mlabel),datasets:[
+      {label:'Achievement',data:all.map(m=>momRows.filter(r=>r.month===m).reduce((a,r)=>a+r.achievement,0)),backgroundColor:'rgba(8,127,140,.75)',borderRadius:4},
+      {label:'Target',data:all.map(m=>momRows.filter(r=>r.month===m).reduce((a,r)=>a+r.target,0)),type:'line',borderColor:'#b42318',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#b42318',tension:.3}
+    ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
       scales:{x:{ticks:{font:{size:11},maxRotation:45},grid:{display:false}},y:{ticks:{font:{size:11}},grid:{color:'rgba(0,0,0,.05)'}}}}
   });
@@ -552,12 +508,11 @@ function renderTrend(momRows){
 function goTo(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});}
 document.getElementById('monthSelect').addEventListener('change',e=>{state.month=e.target.value;renderAll();});
 
-/* ── Init ── */
 if(sessionStorage.getItem('cn_auth')==='1'){
   document.getElementById('loginScreen').style.display='none';
   loadAll();
 } else {
-  document.getElementById('pwdInput').focus();
+  document.getElementById('emailInput').focus();
 }
 </script>
 </body>
