@@ -287,9 +287,6 @@ const ALLOWED_EMAILS=[
   'azhaan.yezdani@codingninjas.com',
   'harsh.agarwal@codingninjas.com',
 ];
-function fmt(v){
-  return (v == null ? 0 : Number(v)).toLocaleString('en-IN', { maximumFractionDigits: 0 });
-}
 const pct=v=>(((v||0)*100).toFixed(1))+'%';
 const money=v=>'₹'+fmt(v);
 const clsPct=v=>v>=0.8?'good':v>=0.5?'warn':'bad';
@@ -298,39 +295,6 @@ function mlabel(k){
   if(!k||!k.includes('-'))return k;
   const[y,mo]=k.split('-').map(Number);
   return new Intl.DateTimeFormat('en',{month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(y,mo-1,1)));
-}
-
-function parseDateToTs(s){
-  if(!s) return 0;
-  const str = String(s).trim();
-  const sep = str.includes('/') ? '/' : '-';
-  const parts = str.split(sep).map(x=>x.trim());
-  if(parts.length===3){
-    const a = Number(parts[0]);
-    const b = Number(parts[1]);
-    const c = Number(parts[2]);
-    if(c >= 1000) return new Date(c, b-1, a).getTime(); // dd-mm-yyyy or dd/mm/yyyy
-    if(a >= 1000) return new Date(a, b-1, c).getTime(); // yyyy-mm-dd
-  }
-  const d = new Date(str);
-  return isNaN(d) ? 0 : d.getTime();
-}
-
-function parseMonthKey(s){
-  if(!s) return null;
-  const str = String(s).trim();
-  const sep = str.includes('/') ? '/' : '-';
-  const parts = str.split(sep).map(x=>x.trim());
-  if(parts.length===3){
-    const a = Number(parts[0]);
-    const b = Number(parts[1]);
-    const c = Number(parts[2]);
-    if(c >= 1000) return `${c}-${String(b).padStart(2,'0')}`; // dd-mm-yyyy -> yyyy-mm
-    if(a >= 1000) return `${a}-${String(b).padStart(2,'0')}`; // yyyy-mm-dd -> yyyy-mm
-  }
-  const d = new Date(str);
-  if(isNaN(d)) return null;
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 
 let state={mom:[],bde:[],month:null};
@@ -389,7 +353,6 @@ async function loadAll(){
       achPct:r.achievementPct,refRate:r.refundRate,
       rank:r.overallRank,status:r.status,
     }));
-    state.sales = json.sales || [];
     const months=[...new Set(state.mom.map(r=>r.month))].sort();
     if(!state.month||!months.includes(state.month))state.month=months.at(-1);
     renderAll(months);
@@ -430,7 +393,7 @@ function renderKPI(rows){
   const ap=tgt?ach/tgt:0;
   document.getElementById('kpiGrid').innerHTML=`
     <div class="kpi"><div class="kpi-label">Achievement</div>
-      <div class="kpi-value ${clsPct(ap)}">${fmt(ach)}</div>
+      <div class="kpi-value ${clsPct(ap)}">${fmtAch(ach)}</div>
       <div class="kpi-sub">${pct(ap)} of ${fmt(tgt)} target</div></div>
     <div class="kpi"><div class="kpi-label">Total Entries</div>
       <div class="kpi-value">${fmt(ent)}</div>
@@ -447,8 +410,15 @@ function renderMOM(rows){
   document.getElementById('momRows').innerHTML=[...rows].sort((a,b)=>b.achPct-a.achPct).map(r=>`<tr>
     <td><strong>${r.manager}</strong></td>
     <td class="r">${fmt(r.entries)}</td><td class="r">${fmt(r.complete)}</td>
-    <td class="r">${fmt(r.achievement)}</td><td class="r">${fmt(r.target)}</td>
+    <td class="r">${fmtAch(r.achievement)}</td><td class="r">${fmt(r.target)}</td>
     <td style="min-width:120px">
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,r.achPct*100).toFixed(1)}%;background:${barColor(r.achPct)}"></div></div>
+      <span class="${clsPct(r.achPct)}" style="font-size:11px">${pct(r.achPct)}</span>
+    </td>
+    <td class="r ${r.deficit>0?'bad':'good'}">${r.deficit.toFixed(1)}</td>
+    <td class="r">${r.reqDrr.toFixed(1)}</td>
+    <td class="r ${r.refRate>=0.2?'bad':'good'}">${pct(r.refRate)}</td>
+  </tr>`).join('');
       <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,r.achPct*100).toFixed(1)}%;background:${barColor(r.achPct)}"></div></div>
       <span class="${clsPct(r.achPct)}" style="font-size:11px">${pct(r.achPct)}</span>
     </td>
@@ -489,7 +459,7 @@ function renderLeader(rows){
     return`<tr>
       <td><span class="rank-badge ${bc}">${i+1}</span></td>
       <td><strong>${r.counsellor}</strong></td><td>${r.manager}</td>
-      <td class="r">${fmt(r.achievement)}</td><td class="r">${fmt(r.target)}</td>
+      <td class="r">${fmtAch(r.achievement)}</td><td class="r">${fmt(r.target)}</td>
       <td style="min-width:110px">
         <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,r.achPct*100).toFixed(1)}%;background:${barColor(r.achPct)}"></div></div>
         <span class="${clsPct(r.achPct)}" style="font-size:11px">${pct(r.achPct)}</span>
@@ -501,38 +471,23 @@ function renderLeader(rows){
 }
 
 function openModal(bucket, salesRows){
-  const norm = (s) => String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
-
-  // Primary exact-match by canonical bucket, fallback to keyword contains
-  const rows = (salesRows || []).slice();
-  let filtered = rows.filter(r => norm(r.bucket) === norm(bucket));
-  if(filtered.length === 0){
-    const kw = norm(bucket).split(/\W+/).filter(Boolean);
-    filtered = rows.filter(r => {
-      const rb = norm(r.bucket || r._rawBucket || '');
-      return kw.some(k => rb.includes(k));
-    });
-  }
-  filtered.sort((a,b) => parseDateToTs(b.date) - parseDateToTs(a.date));
-
-  document.getElementById('modalTitle').textContent = `${bucket} — ${filtered.length} lead${filtered.length!==1?'s':''}`;
-  const money = v => '₹' + new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
-  document.getElementById('modalRows').innerHTML = filtered.length
+  const filtered=salesRows.filter(r=>r.bucket===bucket)
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById('modalTitle').textContent=`${bucket} — ${filtered.length} lead${filtered.length!==1?'s':''}`;
+  const money=v=>'₹'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
+  document.getElementById('modalRows').innerHTML=filtered.length
     ? filtered.map(r=>`<tr>
         <td>${r.date}</td>
         <td>${r.manager}</td>
         <td>${r.counsellor}</td>
         <td>${r.learner}</td>
-        <td><span class="${norm(r.bucket)==='complete/rfd'?'good':norm(r.bucket)==='refund requested'?'bad':'warn'}">${r.bucket}</span></td>
+        <td><span class="${r.bucket==='Complete/RFD'?'good':r.bucket==='Refund Requested'?'bad':'warn'}">${r.bucket}</span></td>
         <td class="r">${money(r.amount)}</td>
       </tr>`).join('')
     : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No records found</td></tr>';
   document.getElementById('modalOverlay').style.display='flex';
 }
-function showLeads(bucket){
-  const salesForMonth = (state.sales || []).filter(r => r.month === state.month);
-  openModal(bucket, salesForMonth);
-}
+
 function closeModal(){
   document.getElementById('modalOverlay').style.display='none';
 }
@@ -546,22 +501,6 @@ function renderStatus(rows){
   const monthSales=state.bde
     .filter(r=>r.month===state.month)
     .flatMap(r=>r._rawSales||[]);
-
-  // Debug: compare aggregated MOM counts vs raw sales counts for current month
-  try{
-    const salesForMonth = (state.sales || []).filter(s => {
-      const mk = parseMonthKey(s.date);
-      return mk === state.month;
-    });
-    const norm = s => String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
-    const salesCounts = {
-      complete: salesForMonth.filter(s=> norm(s.bucket) === 'complete/rfd').length,
-      refund: salesForMonth.filter(s=> norm(s.bucket) === 'refund requested').length,
-      down: salesForMonth.filter(s=> norm(s.bucket) === 'down payment').length,
-      loan: salesForMonth.filter(s=> norm(s.bucket) === 'loan in progress').length,
-    };
-    console.info('MOM aggregates vs sales counts', {mom:{complete:t.c,refund:t.r,down:t.d,loan:t.l}, sales: salesCounts, month: state.month});
-  }catch(e){console.warn('Error computing debug sales counts', e)}
   const items=[
     ['Complete / RFD',t.c,'#15803d','Complete/RFD'],
     ['Refund Requested',t.r,'#b42318','Refund Requested'],
