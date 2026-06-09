@@ -151,7 +151,6 @@ td.r,th.r{text-align:right}
       <a onclick="goTo('momSection')">📅 MOM Performance</a>
       <a onclick="goTo('bdeSection')">🏆 BDE Leaderboard</a>
       <a onclick="goTo('qualitySection')">✅ Quality Split</a>
-      <a onclick="goTo('dpSection')">💰 DP</a>
       <a onclick="goTo('trendSection')">📈 Trend</a>
     </nav>
     <div class="rule-box">
@@ -231,33 +230,11 @@ td.r,th.r{text-align:right}
           </table></div>
         </div>
         <div class="panel" id="qualitySection" style="scroll-margin-top:20px">
-          <div class="panel-head">
-            <div><p class="eyebrow">Quality</p><h2>Status Split</h2></div>
-            <div class="filter-tabs">
-              <button class="ftab active" onclick="setQFilter('All')">All</button>
-              <button class="ftab" onclick="setQFilter('Azhaan')">Azhaan</button>
-              <button class="ftab" onclick="setQFilter('Nazim')">Nazim</button>
-              <button class="ftab" onclick="setQFilter('Priyanka')">Priyanka</button>
-            </div>
-          </div>
+          <div class="panel-head"><div><p class="eyebrow">Quality</p><h2>Status Split</h2></div></div>
           <div class="status-list" id="statusSplit"></div>
           <div style="margin-top:16px;position:relative;height:180px"><canvas id="statusChart"></canvas></div>
           <div id="statusLegend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11px;color:var(--muted)"></div>
         </div>
-      </div>
-
-      <!-- DP Tracking Card -->
-      <div class="panel" id="dpSection" style="scroll-margin-top:20px">
-        <div class="panel-head">
-          <div><p class="eyebrow">Down Payment Tracker</p><h2>DP Amount Breakdown</h2></div>
-          <div class="filter-tabs">
-            <button class="ftab active" onclick="setDPFilter('All')">All</button>
-            <button class="ftab" onclick="setDPFilter('Azhaan')">Azhaan</button>
-            <button class="ftab" onclick="setDPFilter('Nazim')">Nazim</button>
-            <button class="ftab" onclick="setDPFilter('Priyanka')">Priyanka</button>
-          </div>
-        </div>
-        <div id="dpContent"></div>
       </div>
 
       <div class="panel" id="trendSection" style="scroll-margin-top:20px">
@@ -306,7 +283,7 @@ function parseDateToTs(s){
 }
 
 let state={mom:[],bde:[],sales:[],month:null};
-let trendChart=null,statusChart=null,activeFilter='All', activeQFilter='All', activeDPFilter='All';
+let trendChart=null,statusChart=null,activeFilter='All';
 
 // ── Auth ─────────────────────────────────────────────────────
 function checkPwd(){
@@ -377,7 +354,7 @@ function renderAll(months){
   document.getElementById('eyebrow').textContent=`Sales Desk · ${mlabel(state.month)}`;
   const mMom=state.mom.filter(r=>r.month===state.month);
   const mBde=state.bde.filter(r=>r.month===state.month);
-  renderKPI(mMom);renderMOM(mMom);renderPace(mMom);renderLeader(mBde);renderStatus(mMom);renderDP();renderTrend(state.mom);
+  renderKPI(mMom);renderMOM(mMom);renderPace(mMom);renderLeader(mBde);renderStatus(mMom);renderTrend(state.mom);
 }
 
 function renderKPI(rows){
@@ -457,73 +434,8 @@ function renderLeader(rows){
 }
 
 function showLeads(bucket){
-  let salesForMonth=(state.sales||[]).filter(r=>r.month===state.month);
-  if(activeQFilter!=='All') salesForMonth=salesForMonth.filter(r=>r.manager===activeQFilter);
+  const salesForMonth=(state.sales||[]).filter(r=>r.month===state.month);
   openModal(bucket,salesForMonth);
-}
-
-// ── DP Tracker ───────────────────────────────────────────────
-function renderDP(){
-  const MANAGERS=['Azhaan','Nazim','Priyanka'];
-  const dpSales=(state.sales||[]).filter(r=>r.month===state.month&&r.bucket==='Down Payment');
-  const filtered=activeDPFilter==='All'?dpSales:dpSales.filter(r=>r.manager===activeDPFilter);
-
-  const counts={1000:0,2500:0,5000:0};
-  const byMgr={};
-  MANAGERS.forEach(m=>{byMgr[m]={1000:0,2500:0,5000:0};});
-
-  for(const s of filtered){
-    const dp=s.dpAmount;
-    if(counts[dp]!==undefined){
-      counts[dp]++;
-      if(byMgr[s.manager])byMgr[s.manager][dp]++;
-    }
-  }
-
-  const total=counts[1000]+counts[2500]+counts[5000];
-  const dpColors={1000:'#1d4ed8',2500:'#b7791f',5000:'#15803d'};
-
-  // Overall totals
-  const overallHtml=`
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
-      ${[1000,2500,5000].map(amt=>`
-        <div style="background:var(--page);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px">₹${fmt(amt)} DP</div>
-          <div style="font-size:28px;font-weight:700;color:${dpColors[amt]}">${counts[amt]}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">${total?((counts[amt]/total)*100).toFixed(1):0}% of DPs</div>
-        </div>`).join('')}
-    </div>`;
-
-  // Per manager breakdown (only show if All filter)
-  const mgrHtml = activeDPFilter==='All' ? `
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Manager Breakdown</div>
-    <div class="table-wrap"><table>
-      <thead><tr>
-        <th>Manager</th>
-        <th class="r" style="color:#1d4ed8">₹1,000 DP</th>
-        <th class="r" style="color:#b7791f">₹2,500 DP</th>
-        <th class="r" style="color:#15803d">₹5,000 DP</th>
-        <th class="r">Total</th>
-      </tr></thead>
-      <tbody>
-        ${MANAGERS.map(m=>`<tr>
-          <td><strong>${m}</strong></td>
-          <td class="r" style="color:#1d4ed8;font-weight:600">${byMgr[m][1000]}</td>
-          <td class="r" style="color:#b7791f;font-weight:600">${byMgr[m][2500]}</td>
-          <td class="r" style="color:#15803d;font-weight:600">${byMgr[m][5000]}</td>
-          <td class="r"><strong>${byMgr[m][1000]+byMgr[m][2500]+byMgr[m][5000]}</strong></td>
-        </tr>`).join('')}
-        <tr style="border-top:2px solid var(--line)">
-          <td><strong>Total</strong></td>
-          <td class="r" style="color:#1d4ed8;font-weight:700">${counts[1000]}</td>
-          <td class="r" style="color:#b7791f;font-weight:700">${counts[2500]}</td>
-          <td class="r" style="color:#15803d;font-weight:700">${counts[5000]}</td>
-          <td class="r"><strong>${total}</strong></td>
-        </tr>
-      </tbody>
-    </table></div>` : '';
-
-  document.getElementById('dpContent').innerHTML = overallHtml + mgrHtml;
 }
 function openModal(bucket,salesRows){
   const n=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
@@ -547,9 +459,8 @@ function closeModal(){document.getElementById('modalOverlay').style.display='non
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 function renderStatus(rows){
-  const filtered = activeQFilter==='All' ? rows : rows.filter(r=>r.manager===activeQFilter);
   const t={c:0,r:0,d:0,l:0,tot:0};
-  for(const r of filtered){t.c+=r.complete;t.r+=r.refunds;t.d+=r.down;t.l+=r.loan;t.tot+=r.entries;}
+  for(const r of rows){t.c+=r.complete;t.r+=r.refunds;t.d+=r.down;t.l+=r.loan;t.tot+=r.entries;}
   const items=[
     ['Complete / RFD',t.c,'#15803d','Complete/RFD'],
     ['Refund Requested',t.r,'#b42318','Refund Requested'],
@@ -606,3 +517,4 @@ if(sessionStorage.getItem('cn_auth')==='1'){
 </script>
 </body>
 </html>
+
