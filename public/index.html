@@ -151,6 +151,7 @@ td.r,th.r{text-align:right}
       <a onclick="goTo('momSection')">📅 MOM Performance</a>
       <a onclick="goTo('bdeSection')">🏆 BDE Leaderboard</a>
       <a onclick="goTo('qualitySection')">✅ Quality Split</a>
+      <a onclick="goTo('trackerSection')">📅 Daily</a>
       <a onclick="goTo('trendSection')">📈 Trend</a>
     </nav>
     <div class="rule-box">
@@ -237,6 +238,46 @@ td.r,th.r{text-align:right}
         </div>
       </div>
 
+      <!-- Daily Tracker Section -->
+      <div class="panel" id="trackerSection" style="scroll-margin-top:20px">
+        <div class="panel-head">
+          <div><p class="eyebrow">Daily Tracker</p><h2>Entries by TL per Day</h2></div>
+        </div>
+        <!-- Tracker filters -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end">
+          <div>
+            <label class="ctrl-label">Primary Month</label>
+            <select id="trackerMonth" onchange="renderTracker()"></select>
+          </div>
+          <div>
+            <label class="ctrl-label">Compare Month (optional)</label>
+            <select id="trackerCompare" onchange="renderTracker()">
+              <option value="">— None —</option>
+            </select>
+          </div>
+          <div>
+            <label class="ctrl-label">TL Filter</label>
+            <select id="trackerTL" onchange="renderTracker()">
+              <option value="All">All TLs</option>
+              <option value="Azhaan">Azhaan</option>
+              <option value="Nazim">Nazim</option>
+              <option value="Priyanka">Priyanka</option>
+            </select>
+          </div>
+          <div>
+            <label class="ctrl-label">View</label>
+            <select id="trackerView" onchange="renderTracker()">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly Rollup</option>
+            </select>
+          </div>
+        </div>
+        <!-- Chart -->
+        <div style="position:relative;height:240px;margin-bottom:20px"><canvas id="trackerChart"></canvas></div>
+        <!-- Table -->
+        <div class="table-wrap" id="trackerTable"></div>
+      </div>
+
       <div class="panel" id="trendSection" style="scroll-margin-top:20px">
         <div class="panel-head"><div><p class="eyebrow">History</p><h2>Monthly Achievement vs Target</h2></div></div>
         <div style="position:relative;height:220px"><canvas id="trendChart"></canvas></div>
@@ -255,15 +296,12 @@ const ALLOWED_EMAILS=[
   'azhaan.yezdani@codingninjas.com',
   'harsh.agarwal@codingninjas.com',
 ];
-
-// ── Formatters ───────────────────────────────────────────────
 const fmt=v=>new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
 const fmtAch=v=>{const n=Number(v)||0;return n%1===0?n.toString():n.toFixed(1);};
 const pct=v=>(((v||0)*100).toFixed(1))+'%';
 const money=v=>'₹'+fmt(v);
 const clsPct=v=>v>=0.8?'good':v>=0.5?'warn':'bad';
 const barColor=v=>v>=0.8?'#15803d':v>=0.5?'#b7791f':'#087f8c';
-
 function mlabel(k){
   if(!k||!k.includes('-'))return k;
   const[y,mo]=k.split('-').map(Number);
@@ -281,11 +319,176 @@ function parseDateToTs(s){
   }
   const d=new Date(str);return isNaN(d)?0:d.getTime();
 }
-
 let state={mom:[],bde:[],sales:[],month:null};
-let trendChart=null,statusChart=null,activeFilter='All';
+let trendChart=null,statusChart=null,trackerChart=null,activeFilter='All';
 
-// ── Auth ─────────────────────────────────────────────────────
+// ── Tracker helpers ──────────────────────────────────────────
+const MANAGERS=['Azhaan','Nazim','Priyanka'];
+const TL_COLORS={'Azhaan':'#087f8c','Nazim':'#b7791f','Priyanka':'#7c3aed'};
+const TL_COLORS_CMP={'Azhaan':'rgba(8,127,140,.3)','Nazim':'rgba(183,121,31,.3)','Priyanka':'rgba(124,58,237,.3)'};
+
+function getDaysInMonth(monthKey){
+  const[y,m]=monthKey.split('-').map(Number);
+  const days=[];
+  const end=new Date(Date.UTC(y,m,0)).getUTCDate();
+  for(let d=1;d<=end;d++) days.push(String(d).padStart(2,'0'));
+  return days;
+}
+
+function getWeeksInMonth(monthKey){
+  const[y,m]=monthKey.split('-').map(Number);
+  const end=new Date(Date.UTC(y,m,0)).getUTCDate();
+  const weeks=[];
+  for(let d=1;d<=end;d+=7){
+    const from=d;
+    const to=Math.min(d+6,end);
+    weeks.push({label:`${String(from).padStart(2,'0')}–${String(to).padStart(2,'0')}`,from,to});
+  }
+  return weeks;
+}
+
+function countEntriesByDay(sales,monthKey,manager){
+  const map={};
+  for(const s of sales){
+    if(s.month!==monthKey) continue;
+    if(manager&&manager!=='All'&&s.manager!==manager) continue;
+    // parse day from date
+    const str=String(s.date||'').trim();
+    const sep=str.includes('/')?'/':'-';
+    const p=str.split(sep);
+    let day='';
+    if(p.length===3){
+      const a=Number(p[0]),c=Number(p[2]);
+      day=c>=1000?String(a).padStart(2,'0'):String(a).padStart(2,'0');
+      // dd/mm/yyyy or dd-mm-yyyy → day=p[0]
+      // yyyy-mm-dd → day=p[2]
+      if(a>=1000) day=String(Number(p[2])).padStart(2,'0');
+      else day=String(Number(p[0])).padStart(2,'0');
+    }
+    if(day) map[day]=(map[day]||0)+1;
+  }
+  return map;
+}
+
+function renderTracker(){
+  const primaryMonth=document.getElementById('trackerMonth').value;
+  const compareMonth=document.getElementById('trackerCompare').value;
+  const tlFilter=document.getElementById('trackerTL').value;
+  const view=document.getElementById('trackerView').value;
+  if(!primaryMonth||!state.sales.length) return;
+
+  const tls=tlFilter==='All'?MANAGERS:[tlFilter];
+  const sales=state.sales;
+
+  // Build per-TL daily counts
+  const primaryCounts={};
+  const compareCounts={};
+  tls.forEach(tl=>{
+    primaryCounts[tl]=countEntriesByDay(sales,primaryMonth,tl);
+    if(compareMonth) compareCounts[tl]=countEntriesByDay(sales,compareMonth,tl);
+  });
+
+  const isWeekly=view==='weekly';
+  const days=getDaysInMonth(primaryMonth);
+  const weeks=getWeeksInMonth(primaryMonth);
+  const slots=isWeekly?weeks.map(w=>w.label):days;
+
+  // Aggregate weekly if needed
+  function getVal(counts,tl,slot,idx){
+    if(!isWeekly) return counts[tl]?.[slot]||0;
+    const w=weeks[idx];
+    let sum=0;
+    for(let d=w.from;d<=w.to;d++) sum+=counts[tl]?.[String(d).padStart(2,'0')]||0;
+    return sum;
+  }
+
+  // ── Chart ──────────────────────────────────────────────────
+  if(trackerChart) trackerChart.destroy();
+  const datasets=[];
+  tls.forEach(tl=>{
+    const data=slots.map((_,i)=>getVal(primaryCounts,tl,slots[i],i));
+    datasets.push({label:tl,data,borderColor:TL_COLORS[tl],backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3});
+    if(compareMonth){
+      const cmpDays=getDaysInMonth(compareMonth);
+      const cmpWeeks=getWeeksInMonth(compareMonth);
+      const cmpData=slots.map((_,i)=>{
+        if(!isWeekly) return compareCounts[tl]?.[slots[i]]||0;
+        const w=cmpWeeks[i]||weeks[i];
+        let sum=0;
+        if(w) for(let d=w.from;d<=w.to;d++) sum+=compareCounts[tl]?.[String(d).padStart(2,'0')]||0;
+        return sum;
+      });
+      datasets.push({label:`${tl} (${mlabel(compareMonth)})`,data:cmpData,borderColor:TL_COLORS[tl],backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:2,tension:.3});
+    }
+  });
+
+  trackerChart=new Chart(document.getElementById('trackerChart'),{
+    type:'line',
+    data:{labels:slots,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:20}}},
+      scales:{
+        x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:isWeekly?6:15},grid:{display:false}},
+        y:{ticks:{font:{size:11},stepSize:1},grid:{color:'rgba(0,0,0,.05)'}}
+      }
+    }
+  });
+
+  // ── Table ──────────────────────────────────────────────────
+  const pLabel=mlabel(primaryMonth);
+  const cLabel=compareMonth?mlabel(compareMonth):'';
+
+  // Build header
+  let thead='<tr><th>Date</th>';
+  tls.forEach(tl=>{
+    thead+=`<th class="r" style="color:${TL_COLORS[tl]}">${tl}</th>`;
+    if(compareMonth) thead+=`<th class="r" style="color:${TL_COLORS[tl]};opacity:.5">${tl} (${cLabel})</th>`;
+  });
+  thead+='<th class="r">Total</th>';
+  if(compareMonth) thead+='<th class="r" style="opacity:.5">Total (${cLabel})</th>';
+  thead+='</tr>';
+
+  // Build rows
+  let tbody='';
+  let colTotals={};tls.forEach(tl=>{colTotals[tl]=0;colTotals[tl+'_cmp']=0;});
+  let rowTotal=0,rowCmpTotal=0;
+
+  slots.forEach((slot,i)=>{
+    let rowSum=0,rowCmpSum=0;
+    let cells='';
+    tls.forEach(tl=>{
+      const v=getVal(primaryCounts,tl,slot,i);
+      const vc=compareMonth?getVal(compareCounts,tl,slot,i):0;
+      rowSum+=v;rowCmpSum+=vc;
+      colTotals[tl]+=v;colTotals[tl+'_cmp']+=vc;
+      cells+=`<td class="r">${v||''}</td>`;
+      if(compareMonth) cells+=`<td class="r" style="opacity:.5;color:var(--muted)">${vc||''}</td>`;
+    });
+    rowTotal+=rowSum;rowCmpTotal+=rowCmpSum;
+    const label=isWeekly?`Week ${i+1} (${slot})`:slot;
+    tbody+=`<tr><td><strong>${label}</strong></td>${cells}<td class="r"><strong>${rowSum||''}</strong></td>${compareMonth?`<td class="r" style="opacity:.5"><strong>${rowCmpSum||''}</strong></td>`:''}</tr>`;
+  });
+
+  // MTD totals row
+  let totalCells='';
+  tls.forEach(tl=>{
+    totalCells+=`<td class="r" style="color:${TL_COLORS[tl]};font-weight:700">${colTotals[tl]}</td>`;
+    if(compareMonth) totalCells+=`<td class="r" style="opacity:.6;font-weight:700">${colTotals[tl+'_cmp']}</td>`;
+  });
+  tbody+=`<tr style="background:var(--page);border-top:2px solid var(--line)"><td><strong>MTD Total</strong></td>${totalCells}<td class="r"><strong>${rowTotal}</strong></td>${compareMonth?`<td class="r" style="opacity:.6"><strong>${rowCmpTotal}</strong></td>`:''}</tr>`;
+
+  document.getElementById('trackerTable').innerHTML=`<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+}
+
+function initTracker(){
+  const months=[...new Set(state.sales.map(s=>s.month))].sort().reverse();
+  const sel=document.getElementById('trackerMonth');
+  const cmp=document.getElementById('trackerCompare');
+  sel.innerHTML=months.map(m=>`<option value="${m}"${m===state.month?' selected':''}>${mlabel(m)}</option>`).join('');
+  cmp.innerHTML=`<option value="">— None —</option>`+months.map(m=>`<option value="${m}">${mlabel(m)}</option>`).join('');
+  renderTracker();
+}
+
 function checkPwd(){
   const email=document.getElementById('emailInput').value.trim().toLowerCase();
   const pwd=document.getElementById('pwdInput').value;
@@ -300,7 +503,6 @@ function checkPwd(){
 document.getElementById('emailInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pwdInput').focus();});
 document.getElementById('pwdInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkPwd();});
 
-// ── Load data ────────────────────────────────────────────────
 async function loadAll(){
   document.getElementById('loadingState').style.display='flex';
   document.getElementById('errorState').style.display='none';
@@ -346,7 +548,6 @@ async function loadAll(){
   }
 }
 
-// ── Render ───────────────────────────────────────────────────
 function renderAll(months){
   const all=months||[...new Set(state.mom.map(r=>r.month))].sort();
   const sel=document.getElementById('monthSelect');
@@ -355,6 +556,7 @@ function renderAll(months){
   const mMom=state.mom.filter(r=>r.month===state.month);
   const mBde=state.bde.filter(r=>r.month===state.month);
   renderKPI(mMom);renderMOM(mMom);renderPace(mMom);renderLeader(mBde);renderStatus(mMom);renderTrend(state.mom);
+  initTracker();
 }
 
 function renderKPI(rows){
@@ -408,7 +610,7 @@ function renderPace(rows){
 
 function setFilter(manager){
   activeFilter=manager;
-  document.querySelectorAll('.ftab').forEach(b=>b.classList.toggle('active',b.textContent===manager));
+  document.querySelectorAll('#bdeSection .ftab').forEach(b=>b.classList.toggle('active',b.textContent===manager));
   renderLeader(state.bde.filter(r=>r.month===state.month));
 }
 
@@ -517,4 +719,3 @@ if(sessionStorage.getItem('cn_auth')==='1'){
 </script>
 </body>
 </html>
-
