@@ -250,10 +250,10 @@ td.r,th.r{text-align:right}
             <select id="trackerMonth" onchange="renderTracker()"></select>
           </div>
           <div>
-            <label class="ctrl-label">Compare Month (optional)</label>
-            <select id="trackerCompare" onchange="renderTracker()">
-              <option value="">— None —</option>
+            <label class="ctrl-label">Compare Months (multi-select)</label>
+            <select id="trackerCompare" multiple onchange="renderTracker()" style="height:80px;padding:4px 8px;min-width:160px">
             </select>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">Hold Cmd/Ctrl to select multiple</div>
           </div>
           <div>
             <label class="ctrl-label">TL Filter</label>
@@ -372,7 +372,7 @@ function countEntriesByDay(sales,monthKey,manager){
 
 function renderTracker(){
   const primaryMonth=document.getElementById('trackerMonth').value;
-  const compareMonth=document.getElementById('trackerCompare').value;
+  const compareMonths=[...document.getElementById('trackerCompare').selectedOptions].map(o=>o.value).filter(Boolean);
   const tlFilter=document.getElementById('trackerTL').value;
   const view=document.getElementById('trackerView').value;
   if(!primaryMonth||!state.sales.length) return;
@@ -380,12 +380,12 @@ function renderTracker(){
   const tls=tlFilter==='All'?MANAGERS:[tlFilter];
   const sales=state.sales;
 
-  // Build per-TL daily counts
-  const primaryCounts={};
-  const compareCounts={};
-  tls.forEach(tl=>{
-    primaryCounts[tl]=countEntriesByDay(sales,primaryMonth,tl);
-    if(compareMonth) compareCounts[tl]=countEntriesByDay(sales,compareMonth,tl);
+  // Build per-TL daily counts for primary + all compare months
+  const allMonths=[primaryMonth,...compareMonths];
+  const allCounts={};
+  allMonths.forEach(m=>{
+    allCounts[m]={};
+    tls.forEach(tl=>{ allCounts[m][tl]=countEntriesByDay(sales,m,tl); });
   });
 
   const isWeekly=view==='weekly';
@@ -393,40 +393,55 @@ function renderTracker(){
   const weeks=getWeeksInMonth(primaryMonth);
   const slots=isWeekly?weeks.map(w=>w.label):days;
 
-  // Aggregate weekly if needed
-  function getVal(counts,tl,slot,idx){
-    if(!isWeekly) return counts[tl]?.[slot]||0;
+  function getVal(monthKey,tl,slot,idx){
+    if(!isWeekly) return allCounts[monthKey]?.[tl]?.[slot]||0;
     const w=weeks[idx];
     let sum=0;
-    for(let d=w.from;d<=w.to;d++) sum+=counts[tl]?.[String(d).padStart(2,'0')]||0;
+    for(let d=w.from;d<=w.to;d++) sum+=allCounts[monthKey]?.[tl]?.[String(d).padStart(2,'0')]||0;
     return sum;
   }
 
   // ── Chart ──────────────────────────────────────────────────
   if(trackerChart) trackerChart.destroy();
+  const COMPARE_STYLES=['dash','dot','dashdot'];
   const datasets=[];
   tls.forEach(tl=>{
-    const data=slots.map((_,i)=>getVal(primaryCounts,tl,slots[i],i));
-    datasets.push({label:tl,data,borderColor:TL_COLORS[tl],backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3});
-    if(compareMonth){
-      const cmpDays=getDaysInMonth(compareMonth);
-      const cmpWeeks=getWeeksInMonth(compareMonth);
-      const cmpData=slots.map((_,i)=>{
-        if(!isWeekly) return compareCounts[tl]?.[slots[i]]||0;
-        const w=cmpWeeks[i]||weeks[i];
-        let sum=0;
-        if(w) for(let d=w.from;d<=w.to;d++) sum+=compareCounts[tl]?.[String(d).padStart(2,'0')]||0;
-        return sum;
+    // Primary
+    datasets.push({
+      label:`${tl} (${mlabel(primaryMonth)})`,
+      data:slots.map((_,i)=>getVal(primaryMonth,tl,slots[i],i)),
+      borderColor:TL_COLORS[tl],backgroundColor:'transparent',
+      borderWidth:2.5,pointRadius:4,tension:.3,
+    });
+    // Compare months
+    compareMonths.forEach((cm,ci)=>{
+      const opacity=0.5-ci*0.1;
+      const dash=ci===0?[6,3]:ci===1?[2,2]:[6,2,2,2];
+      datasets.push({
+        label:`${tl} (${mlabel(cm)})`,
+        data:slots.map((_,i)=>getVal(cm,tl,slots[i],i)),
+        borderColor:TL_COLORS[tl],backgroundColor:'transparent',
+        borderWidth:1.5,borderDash:dash,pointRadius:3,tension:.3,
+        borderColor:`${TL_COLORS[tl]}${ci===0?'99':'66'}`,
       });
-      datasets.push({label:`${tl} (${mlabel(compareMonth)})`,data:cmpData,borderColor:TL_COLORS[tl],backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:2,tension:.3});
-    }
+    });
   });
 
   trackerChart=new Chart(document.getElementById('trackerChart'),{
     type:'line',
     data:{labels:slots,datasets},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:20}}},
+      plugins:{
+        legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:20}},
+        datalabels:{
+          display:true,
+          align:'top',
+          anchor:'top',
+          font:{size:10,weight:'600'},
+          formatter:(v)=>v>0?v:'',
+          color:(ctx)=>ctx.dataset.borderColor,
+        }
+      },
       scales:{
         x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:isWeekly?6:15},grid:{display:false}},
         y:{ticks:{font:{size:11},stepSize:1},grid:{color:'rgba(0,0,0,.05)'}}
@@ -435,47 +450,53 @@ function renderTracker(){
   });
 
   // ── Table ──────────────────────────────────────────────────
-  const pLabel=mlabel(primaryMonth);
-  const cLabel=compareMonth?mlabel(compareMonth):'';
-
-  // Build header
   let thead='<tr><th>Date</th>';
   tls.forEach(tl=>{
-    thead+=`<th class="r" style="color:${TL_COLORS[tl]}">${tl}</th>`;
-    if(compareMonth) thead+=`<th class="r" style="color:${TL_COLORS[tl]};opacity:.5">${tl} (${cLabel})</th>`;
+    thead+=`<th class="r" style="color:${TL_COLORS[tl]}">${tl} (${mlabel(primaryMonth)})</th>`;
+    compareMonths.forEach(cm=>{
+      thead+=`<th class="r" style="color:${TL_COLORS[tl]};opacity:.5">${tl} (${mlabel(cm)})</th>`;
+    });
   });
   thead+='<th class="r">Total</th>';
-  if(compareMonth) thead+='<th class="r" style="opacity:.5">Total (${cLabel})</th>';
   thead+='</tr>';
 
-  // Build rows
   let tbody='';
-  let colTotals={};tls.forEach(tl=>{colTotals[tl]=0;colTotals[tl+'_cmp']=0;});
-  let rowTotal=0,rowCmpTotal=0;
+  const colTotals={};
+  tls.forEach(tl=>{
+    colTotals[`${tl}_${primaryMonth}`]=0;
+    compareMonths.forEach(cm=>{ colTotals[`${tl}_${cm}`]=0; });
+  });
 
   slots.forEach((slot,i)=>{
-    let rowSum=0,rowCmpSum=0;
+    let rowSum=0;
     let cells='';
     tls.forEach(tl=>{
-      const v=getVal(primaryCounts,tl,slot,i);
-      const vc=compareMonth?getVal(compareCounts,tl,slot,i):0;
-      rowSum+=v;rowCmpSum+=vc;
-      colTotals[tl]+=v;colTotals[tl+'_cmp']+=vc;
+      const v=getVal(primaryMonth,tl,slot,i);
+      rowSum+=v;
+      colTotals[`${tl}_${primaryMonth}`]+=v;
       cells+=`<td class="r">${v||''}</td>`;
-      if(compareMonth) cells+=`<td class="r" style="opacity:.5;color:var(--muted)">${vc||''}</td>`;
+      compareMonths.forEach(cm=>{
+        const vc=getVal(cm,tl,slot,i);
+        colTotals[`${tl}_${cm}`]+=vc;
+        cells+=`<td class="r" style="opacity:.5;color:var(--muted)">${vc||''}</td>`;
+      });
     });
-    rowTotal+=rowSum;rowCmpTotal+=rowCmpSum;
     const label=isWeekly?`Week ${i+1} (${slot})`:slot;
-    tbody+=`<tr><td><strong>${label}</strong></td>${cells}<td class="r"><strong>${rowSum||''}</strong></td>${compareMonth?`<td class="r" style="opacity:.5"><strong>${rowCmpSum||''}</strong></td>`:''}</tr>`;
+    tbody+=`<tr><td><strong>${label}</strong></td>${cells}<td class="r"><strong>${rowSum||''}</strong></td></tr>`;
   });
 
   // MTD totals row
   let totalCells='';
+  let grandTotal=0;
   tls.forEach(tl=>{
-    totalCells+=`<td class="r" style="color:${TL_COLORS[tl]};font-weight:700">${colTotals[tl]}</td>`;
-    if(compareMonth) totalCells+=`<td class="r" style="opacity:.6;font-weight:700">${colTotals[tl+'_cmp']}</td>`;
+    const v=colTotals[`${tl}_${primaryMonth}`];
+    grandTotal+=v;
+    totalCells+=`<td class="r" style="color:${TL_COLORS[tl]};font-weight:700">${v}</td>`;
+    compareMonths.forEach(cm=>{
+      totalCells+=`<td class="r" style="opacity:.6;font-weight:700">${colTotals[`${tl}_${cm}`]}</td>`;
+    });
   });
-  tbody+=`<tr style="background:var(--page);border-top:2px solid var(--line)"><td><strong>MTD Total</strong></td>${totalCells}<td class="r"><strong>${rowTotal}</strong></td>${compareMonth?`<td class="r" style="opacity:.6"><strong>${rowCmpTotal}</strong></td>`:''}</tr>`;
+  tbody+=`<tr style="background:var(--page);border-top:2px solid var(--line)"><td><strong>MTD Total</strong></td>${totalCells}<td class="r"><strong>${grandTotal}</strong></td></tr>`;
 
   document.getElementById('trackerTable').innerHTML=`<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 }
@@ -485,7 +506,7 @@ function initTracker(){
   const sel=document.getElementById('trackerMonth');
   const cmp=document.getElementById('trackerCompare');
   sel.innerHTML=months.map(m=>`<option value="${m}"${m===state.month?' selected':''}>${mlabel(m)}</option>`).join('');
-  cmp.innerHTML=`<option value="">— None —</option>`+months.map(m=>`<option value="${m}">${mlabel(m)}</option>`).join('');
+  cmp.innerHTML=months.map(m=>`<option value="${m}">${mlabel(m)}</option>`).join('');
   renderTracker();
 }
 
