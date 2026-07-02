@@ -244,15 +244,14 @@ td.r,th.r{text-align:right}
           <div><p class="eyebrow">Daily Tracker</p><h2>Entries by TL per Day</h2></div>
         </div>
         <!-- Tracker filters -->
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-start">
           <div>
             <label class="ctrl-label">Primary Month</label>
             <select id="trackerMonth" onchange="renderTracker()"></select>
           </div>
           <div>
-            <label class="ctrl-label">Compare Months (multi-select)</label>
-            <select id="trackerCompare" multiple onchange="renderTracker()" style="height:80px;padding:4px 8px;min-width:160px">
-            </select>
+            <label class="ctrl-label">Compare Months</label>
+            <select id="trackerCompare" multiple onchange="renderTracker()" style="height:80px;padding:4px 8px;min-width:160px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);font:inherit;font-size:12px"></select>
             <div style="font-size:10px;color:var(--muted);margin-top:3px">Hold Cmd/Ctrl to select multiple</div>
           </div>
           <div>
@@ -450,6 +449,9 @@ function renderTracker(){
   });
 
   // ── Table ──────────────────────────────────────────────────
+  const allMonthsOrdered=[primaryMonth,...compareMonths];
+
+  // Header
   let thead='<tr><th>Date</th>';
   tls.forEach(tl=>{
     thead+=`<th class="r" style="color:${TL_COLORS[tl]}">${tl} (${mlabel(primaryMonth)})</th>`;
@@ -457,46 +459,63 @@ function renderTracker(){
       thead+=`<th class="r" style="color:${TL_COLORS[tl]};opacity:.5">${tl} (${mlabel(cm)})</th>`;
     });
   });
-  thead+='<th class="r">Total</th>';
+  // Total columns per month
+  thead+=`<th class="r">Total (${mlabel(primaryMonth)})</th>`;
+  compareMonths.forEach(cm=>{ thead+=`<th class="r" style="opacity:.5">Total (${mlabel(cm)})</th>`; });
   thead+='</tr>';
 
-  let tbody='';
+  // Col totals
   const colTotals={};
   tls.forEach(tl=>{
-    colTotals[`${tl}_${primaryMonth}`]=0;
-    compareMonths.forEach(cm=>{ colTotals[`${tl}_${cm}`]=0; });
+    allMonthsOrdered.forEach(m=>{ colTotals[`${tl}_${m}`]=0; });
   });
+  const monthRowTotals={};
+  allMonthsOrdered.forEach(m=>{ monthRowTotals[m]=0; });
 
+  let tbody='';
   slots.forEach((slot,i)=>{
-    let rowSum=0;
     let cells='';
+    const rowMonthSums={};
+    allMonthsOrdered.forEach(m=>{ rowMonthSums[m]=0; });
+
     tls.forEach(tl=>{
       const v=getVal(primaryMonth,tl,slot,i);
-      rowSum+=v;
+      rowMonthSums[primaryMonth]+=v;
       colTotals[`${tl}_${primaryMonth}`]+=v;
+      monthRowTotals[primaryMonth]+=v;
       cells+=`<td class="r">${v||''}</td>`;
       compareMonths.forEach(cm=>{
         const vc=getVal(cm,tl,slot,i);
+        rowMonthSums[cm]+=vc;
         colTotals[`${tl}_${cm}`]+=vc;
+        monthRowTotals[cm]+=vc;
         cells+=`<td class="r" style="opacity:.5;color:var(--muted)">${vc||''}</td>`;
       });
     });
+
     const label=isWeekly?`Week ${i+1} (${slot})`:slot;
-    tbody+=`<tr><td><strong>${label}</strong></td>${cells}<td class="r"><strong>${rowSum||''}</strong></td></tr>`;
+    let totalCells=`<td class="r"><strong>${rowMonthSums[primaryMonth]||''}</strong></td>`;
+    compareMonths.forEach(cm=>{ totalCells+=`<td class="r" style="opacity:.5"><strong>${rowMonthSums[cm]||''}</strong></td>`; });
+    tbody+=`<tr><td><strong>${label}</strong></td>${cells}${totalCells}</tr>`;
   });
 
   // MTD totals row
   let totalCells='';
-  let grandTotal=0;
+  let grandTotals={};
+  allMonthsOrdered.forEach(m=>{ grandTotals[m]=0; });
   tls.forEach(tl=>{
     const v=colTotals[`${tl}_${primaryMonth}`];
-    grandTotal+=v;
+    grandTotals[primaryMonth]+=v;
     totalCells+=`<td class="r" style="color:${TL_COLORS[tl]};font-weight:700">${v}</td>`;
     compareMonths.forEach(cm=>{
-      totalCells+=`<td class="r" style="opacity:.6;font-weight:700">${colTotals[`${tl}_${cm}`]}</td>`;
+      const vc=colTotals[`${tl}_${cm}`];
+      grandTotals[cm]+=vc;
+      totalCells+=`<td class="r" style="opacity:.6;font-weight:700">${vc}</td>`;
     });
   });
-  tbody+=`<tr style="background:var(--page);border-top:2px solid var(--line)"><td><strong>MTD Total</strong></td>${totalCells}<td class="r"><strong>${grandTotal}</strong></td></tr>`;
+  let grandTotalCells=`<td class="r" style="font-weight:700">${grandTotals[primaryMonth]}</td>`;
+  compareMonths.forEach(cm=>{ grandTotalCells+=`<td class="r" style="opacity:.6;font-weight:700">${grandTotals[cm]}</td>`; });
+  tbody+=`<tr style="background:var(--page);border-top:2px solid var(--line)"><td><strong>MTD Total</strong></td>${totalCells}${grandTotalCells}</tr>`;
 
   document.getElementById('trackerTable').innerHTML=`<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 }
