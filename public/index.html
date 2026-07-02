@@ -50,6 +50,7 @@ select,button{height:44px;border:1px solid var(--line);border-radius:7px;backgro
 select{padding:0 28px 0 10px}
 button{padding:0 14px;cursor:pointer;font-weight:600}
 button.primary{background:var(--ink);color:var(--page);border-color:var(--ink)}
+button.sm{height:32px;font-size:11px;padding:0 10px}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
 .kpi-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
@@ -57,7 +58,7 @@ button.primary{background:var(--ink);color:var(--page);border-color:var(--ink)}
 .kpi-sub{font-size:11px;color:var(--muted)}
 .panel-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:var(--shadow)}
-.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px;flex-wrap:wrap}
 .pill{border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--muted)}
 .pill.live{background:#e6faf0;color:#15803d;border-color:#a3e6bc}
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -97,9 +98,34 @@ td.r,th.r{text-align:right}
 .ftab{height:30px;padding:0 12px;border:1px solid var(--line);border-radius:20px;background:var(--panel);color:var(--muted);font:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
 .ftab:hover{border-color:var(--ink);color:var(--ink)}
 .ftab.active{background:var(--ink);color:var(--page);border-color:var(--ink)}
+
+/* ── Custom Report Builder ────────────────────────────── */
+.report-layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;align-items:start}
+.report-sidebar{background:var(--page);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:16px;position:sticky;top:20px}
+.report-section{display:grid;gap:8px}
+.report-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.bde-checklist{max-height:200px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:8px}
+.bde-item{display:flex;align-items:center;gap:8px;padding:5px 4px;border-radius:5px;cursor:pointer;font-size:12px}
+.bde-item:hover{background:var(--line)}
+.bde-item input[type=checkbox]{width:14px;height:14px;accent-color:var(--brand);cursor:pointer;flex-shrink:0}
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.metric-item{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer}
+.metric-item input[type=checkbox]{width:14px;height:14px;accent-color:var(--brand);cursor:pointer}
+.month-multi{width:100%;height:100px;border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--panel);color:var(--ink);font:inherit;font-size:12px}
+.report-output{display:grid;gap:14px}
+.report-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.report-kpi{background:var(--page);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.report-kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted)}
+.report-kpi-value{font-size:22px;font-weight:700;margin:4px 0 2px}
+.report-kpi-sub{font-size:11px;color:var(--muted)}
+.active-bdes-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.bde-tag{display:inline-flex;align-items:center;gap:4px;background:var(--page);border:1px solid var(--line);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600}
+.export-bar{display:flex;gap:8px;flex-wrap:wrap}
+
 @media(max-width:900px){
   .shell{grid-template-columns:1fr}.sidebar{display:none}.mob-nav{display:block}
-  .panel-row{grid-template-columns:1fr}.content{padding:14px;gap:14px}.h1{font-size:20px}
+  .panel-row{grid-template-columns:1fr}.content{padding:14px;gap:14px}
+  .report-layout{grid-template-columns:1fr}
 }
 @media(max-width:560px){
   .kpi-grid{grid-template-columns:1fr 1fr}.kpi-value{font-size:22px}
@@ -151,7 +177,8 @@ td.r,th.r{text-align:right}
       <a onclick="goTo('momSection')">📅 MOM Performance</a>
       <a onclick="goTo('bdeSection')">🏆 BDE Leaderboard</a>
       <a onclick="goTo('qualitySection')">✅ Quality Split</a>
-      <a onclick="goTo('trackerSection')">📅 Daily</a>
+      <a onclick="goTo('trackerSection')">📅 Daily Tracker</a>
+      <a onclick="goTo('reportSection')">🛠 Custom Report</a>
       <a onclick="goTo('trendSection')">📈 Trend</a>
     </nav>
     <div class="rule-box">
@@ -167,6 +194,8 @@ td.r,th.r{text-align:right}
       <a onclick="goTo('momSection')">📅 MOM</a>
       <a onclick="goTo('bdeSection')">🏆 BDEs</a>
       <a onclick="goTo('qualitySection')">✅ Quality</a>
+      <a onclick="goTo('trackerSection')">📅 Daily</a>
+      <a onclick="goTo('reportSection')">🛠 Report</a>
       <a onclick="goTo('trendSection')">📈 Trend</a>
     </div>
 
@@ -238,24 +267,17 @@ td.r,th.r{text-align:right}
         </div>
       </div>
 
-      <!-- Daily Tracker Section -->
+      <!-- Daily Tracker -->
       <div class="panel" id="trackerSection" style="scroll-margin-top:20px">
-        <div class="panel-head">
-          <div><p class="eyebrow">Daily Tracker</p><h2>Entries by TL per Day</h2></div>
-        </div>
-        <!-- Tracker filters -->
+        <div class="panel-head"><div><p class="eyebrow">Daily Tracker</p><h2>Entries by TL per Day</h2></div></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-start">
-          <div>
-            <label class="ctrl-label">Primary Month</label>
-            <select id="trackerMonth" onchange="renderTracker()"></select>
-          </div>
+          <div><label class="ctrl-label">Primary Month</label><select id="trackerMonth" onchange="renderTracker()"></select></div>
           <div>
             <label class="ctrl-label">Compare Months</label>
             <select id="trackerCompare" multiple onchange="renderTracker()" style="height:80px;padding:4px 8px;min-width:160px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);font:inherit;font-size:12px"></select>
             <div style="font-size:10px;color:var(--muted);margin-top:3px">Hold Cmd/Ctrl to select multiple</div>
           </div>
-          <div>
-            <label class="ctrl-label">TL Filter</label>
+          <div><label class="ctrl-label">TL Filter</label>
             <select id="trackerTL" onchange="renderTracker()">
               <option value="All">All TLs</option>
               <option value="Azhaan">Azhaan</option>
@@ -263,18 +285,76 @@ td.r,th.r{text-align:right}
               <option value="Priyanka">Priyanka</option>
             </select>
           </div>
-          <div>
-            <label class="ctrl-label">View</label>
+          <div><label class="ctrl-label">View</label>
             <select id="trackerView" onchange="renderTracker()">
               <option value="daily">Daily</option>
               <option value="weekly">Weekly Rollup</option>
             </select>
           </div>
         </div>
-        <!-- Chart -->
         <div style="position:relative;height:240px;margin-bottom:20px"><canvas id="trackerChart"></canvas></div>
-        <!-- Table -->
         <div class="table-wrap" id="trackerTable"></div>
+      </div>
+
+      <!-- Custom Report Builder -->
+      <div class="panel" id="reportSection" style="scroll-margin-top:20px">
+        <div class="panel-head">
+          <div><p class="eyebrow">Custom Report</p><h2>Build Your Own Summary</h2></div>
+          <div class="export-bar">
+            <button class="sm" onclick="exportReportText()">📋 Copy as Text</button>
+            <button class="sm" onclick="exportReportCSV()">⬇ Download CSV</button>
+          </div>
+        </div>
+        <div class="report-layout">
+          <!-- Left: Controls -->
+          <div class="report-sidebar">
+            <div class="report-section">
+              <div class="report-section-title">Months</div>
+              <select id="reportMonths" multiple class="month-multi"></select>
+              <div style="font-size:10px;color:var(--muted)">Hold Cmd/Ctrl to select multiple</div>
+            </div>
+            <div class="report-section">
+              <div class="report-section-title">Team Filter</div>
+              <select id="reportTeam" onchange="refreshBdeChecklist()">
+                <option value="All">All Teams</option>
+                <option value="Azhaan">Azhaan</option>
+                <option value="Nazim">Nazim</option>
+                <option value="Priyanka">Priyanka</option>
+              </select>
+            </div>
+            <div class="report-section">
+              <div class="report-section-title" style="display:flex;justify-content:space-between">
+                <span>BDEs</span>
+                <span style="display:flex;gap:6px">
+                  <span style="cursor:pointer;color:var(--teal);font-size:11px" onclick="selectAllBdes()">All</span>
+                  <span style="cursor:pointer;color:var(--muted);font-size:11px" onclick="deselectAllBdes()">None</span>
+                </span>
+              </div>
+              <div class="bde-checklist" id="bdeChecklist"></div>
+            </div>
+            <div class="report-section">
+              <div class="report-section-title">Metrics</div>
+              <div class="metric-grid" id="metricGrid">
+                <label class="metric-item"><input type="checkbox" value="entries" checked onchange="buildReport()"> Entries</label>
+                <label class="metric-item"><input type="checkbox" value="complete" checked onchange="buildReport()"> RFD</label>
+                <label class="metric-item"><input type="checkbox" value="achievement" checked onchange="buildReport()"> Achievement</label>
+                <label class="metric-item"><input type="checkbox" value="refunds" checked onchange="buildReport()"> Refunds</label>
+                <label class="metric-item"><input type="checkbox" value="refRate" checked onchange="buildReport()"> Refund %</label>
+                <label class="metric-item"><input type="checkbox" value="achPct" checked onchange="buildReport()"> Ach %</label>
+                <label class="metric-item"><input type="checkbox" value="amount" onchange="buildReport()"> Amount</label>
+                <label class="metric-item"><input type="checkbox" value="down" onchange="buildReport()"> Down Payment</label>
+              </div>
+            </div>
+            <button class="primary" style="width:100%" onclick="buildReport()">Generate Report</button>
+          </div>
+
+          <!-- Right: Output -->
+          <div class="report-output" id="reportOutput">
+            <div style="color:var(--muted);font-size:13px;padding:40px 0;text-align:center">
+              Select months and BDEs on the left, then click <strong>Generate Report</strong>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="panel" id="trendSection" style="scroll-margin-top:20px">
@@ -288,247 +368,23 @@ td.r,th.r{text-align:right}
 </div>
 
 <script>
-const ALLOWED_EMAILS=[
-  'yogesh.gautam01@codingninjas.com',
-  'priyanka.jaiswal@codingninjas.com',
-  'mohd.nazim@codingninjas.com',
-  'azhaan.yezdani@codingninjas.com',
-  'harsh.agarwal@codingninjas.com',
-];
+const ALLOWED_EMAILS=['yogesh.gautam01@codingninjas.com','priyanka.jaiswal@codingninjas.com','mohd.nazim@codingninjas.com','azhaan.yezdani@codingninjas.com','harsh.agarwal@codingninjas.com'];
+const MANAGERS=['Azhaan','Nazim','Priyanka'];
+const TL_COLORS={'Azhaan':'#087f8c','Nazim':'#b7791f','Priyanka':'#7c3aed'};
+
 const fmt=v=>new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(v||0);
 const fmtAch=v=>{const n=Number(v)||0;return n%1===0?n.toString():n.toFixed(1);};
 const pct=v=>(((v||0)*100).toFixed(1))+'%';
 const money=v=>'₹'+fmt(v);
 const clsPct=v=>v>=0.8?'good':v>=0.5?'warn':'bad';
 const barColor=v=>v>=0.8?'#15803d':v>=0.5?'#b7791f':'#087f8c';
-function mlabel(k){
-  if(!k||!k.includes('-'))return k;
-  const[y,mo]=k.split('-').map(Number);
-  return new Intl.DateTimeFormat('en',{month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(y,mo-1,1)));
-}
-function parseDateToTs(s){
-  if(!s)return 0;
-  const str=String(s).trim();
-  const sep=str.includes('/')?'/':'-';
-  const p=str.split(sep);
-  if(p.length===3){
-    const a=Number(p[0]),b=Number(p[1]),c=Number(p[2]);
-    if(c>=1000)return new Date(c,b-1,a).getTime();
-    if(a>=1000)return new Date(a,b-1,c).getTime();
-  }
-  const d=new Date(str);return isNaN(d)?0:d.getTime();
-}
+function mlabel(k){if(!k||!k.includes('-'))return k;const[y,mo]=k.split('-').map(Number);return new Intl.DateTimeFormat('en',{month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(y,mo-1,1)));}
+function parseDateToTs(s){if(!s)return 0;const str=String(s).trim();const sep=str.includes('/')?'/':'-';const p=str.split(sep);if(p.length===3){const a=Number(p[0]),b=Number(p[1]),c=Number(p[2]);if(c>=1000)return new Date(c,b-1,a).getTime();if(a>=1000)return new Date(a,b-1,c).getTime();}const d=new Date(str);return isNaN(d)?0:d.getTime();}
+
 let state={mom:[],bde:[],sales:[],month:null};
 let trendChart=null,statusChart=null,trackerChart=null,activeFilter='All';
 
-// ── Tracker helpers ──────────────────────────────────────────
-const MANAGERS=['Azhaan','Nazim','Priyanka'];
-const TL_COLORS={'Azhaan':'#087f8c','Nazim':'#b7791f','Priyanka':'#7c3aed'};
-const TL_COLORS_CMP={'Azhaan':'rgba(8,127,140,.3)','Nazim':'rgba(183,121,31,.3)','Priyanka':'rgba(124,58,237,.3)'};
-
-function getDaysInMonth(monthKey){
-  const[y,m]=monthKey.split('-').map(Number);
-  const days=[];
-  const end=new Date(Date.UTC(y,m,0)).getUTCDate();
-  for(let d=1;d<=end;d++) days.push(String(d).padStart(2,'0'));
-  return days;
-}
-
-function getWeeksInMonth(monthKey){
-  const[y,m]=monthKey.split('-').map(Number);
-  const end=new Date(Date.UTC(y,m,0)).getUTCDate();
-  const weeks=[];
-  for(let d=1;d<=end;d+=7){
-    const from=d;
-    const to=Math.min(d+6,end);
-    weeks.push({label:`${String(from).padStart(2,'0')}–${String(to).padStart(2,'0')}`,from,to});
-  }
-  return weeks;
-}
-
-function countEntriesByDay(sales,monthKey,manager){
-  const map={};
-  for(const s of sales){
-    if(s.month!==monthKey) continue;
-    if(manager&&manager!=='All'&&s.manager!==manager) continue;
-    // parse day from date
-    const str=String(s.date||'').trim();
-    const sep=str.includes('/')?'/':'-';
-    const p=str.split(sep);
-    let day='';
-    if(p.length===3){
-      const a=Number(p[0]),c=Number(p[2]);
-      day=c>=1000?String(a).padStart(2,'0'):String(a).padStart(2,'0');
-      // dd/mm/yyyy or dd-mm-yyyy → day=p[0]
-      // yyyy-mm-dd → day=p[2]
-      if(a>=1000) day=String(Number(p[2])).padStart(2,'0');
-      else day=String(Number(p[0])).padStart(2,'0');
-    }
-    if(day) map[day]=(map[day]||0)+1;
-  }
-  return map;
-}
-
-function renderTracker(){
-  const primaryMonth=document.getElementById('trackerMonth').value;
-  const compareMonths=[...document.getElementById('trackerCompare').selectedOptions].map(o=>o.value).filter(Boolean);
-  const tlFilter=document.getElementById('trackerTL').value;
-  const view=document.getElementById('trackerView').value;
-  if(!primaryMonth||!state.sales.length) return;
-
-  const tls=tlFilter==='All'?MANAGERS:[tlFilter];
-  const sales=state.sales;
-
-  // Build per-TL daily counts for primary + all compare months
-  const allMonths=[primaryMonth,...compareMonths];
-  const allCounts={};
-  allMonths.forEach(m=>{
-    allCounts[m]={};
-    tls.forEach(tl=>{ allCounts[m][tl]=countEntriesByDay(sales,m,tl); });
-  });
-
-  const isWeekly=view==='weekly';
-  const days=getDaysInMonth(primaryMonth);
-  const weeks=getWeeksInMonth(primaryMonth);
-  const slots=isWeekly?weeks.map(w=>w.label):days;
-
-  function getVal(monthKey,tl,slot,idx){
-    if(!isWeekly) return allCounts[monthKey]?.[tl]?.[slot]||0;
-    const w=weeks[idx];
-    let sum=0;
-    for(let d=w.from;d<=w.to;d++) sum+=allCounts[monthKey]?.[tl]?.[String(d).padStart(2,'0')]||0;
-    return sum;
-  }
-
-  // ── Chart ──────────────────────────────────────────────────
-  if(trackerChart) trackerChart.destroy();
-  const COMPARE_STYLES=['dash','dot','dashdot'];
-  const datasets=[];
-  tls.forEach(tl=>{
-    // Primary
-    datasets.push({
-      label:`${tl} (${mlabel(primaryMonth)})`,
-      data:slots.map((_,i)=>getVal(primaryMonth,tl,slots[i],i)),
-      borderColor:TL_COLORS[tl],backgroundColor:'transparent',
-      borderWidth:2.5,pointRadius:4,tension:.3,
-    });
-    // Compare months
-    compareMonths.forEach((cm,ci)=>{
-      const opacity=0.5-ci*0.1;
-      const dash=ci===0?[6,3]:ci===1?[2,2]:[6,2,2,2];
-      datasets.push({
-        label:`${tl} (${mlabel(cm)})`,
-        data:slots.map((_,i)=>getVal(cm,tl,slots[i],i)),
-        borderColor:TL_COLORS[tl],backgroundColor:'transparent',
-        borderWidth:1.5,borderDash:dash,pointRadius:3,tension:.3,
-        borderColor:`${TL_COLORS[tl]}${ci===0?'99':'66'}`,
-      });
-    });
-  });
-
-  trackerChart=new Chart(document.getElementById('trackerChart'),{
-    type:'line',
-    data:{labels:slots,datasets},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:20}},
-        datalabels:{
-          display:true,
-          align:'top',
-          anchor:'top',
-          font:{size:10,weight:'600'},
-          formatter:(v)=>v>0?v:'',
-          color:(ctx)=>ctx.dataset.borderColor,
-        }
-      },
-      scales:{
-        x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:isWeekly?6:15},grid:{display:false}},
-        y:{ticks:{font:{size:11},stepSize:1},grid:{color:'rgba(0,0,0,.05)'}}
-      }
-    }
-  });
-
-  // ── Table ──────────────────────────────────────────────────
-  const allMonthsOrdered=[primaryMonth,...compareMonths];
-
-  // Header
-  let thead='<tr><th>Date</th>';
-  tls.forEach(tl=>{
-    thead+=`<th class="r" style="color:${TL_COLORS[tl]}">${tl} (${mlabel(primaryMonth)})</th>`;
-    compareMonths.forEach(cm=>{
-      thead+=`<th class="r" style="color:${TL_COLORS[tl]};opacity:.5">${tl} (${mlabel(cm)})</th>`;
-    });
-  });
-  // Total columns per month
-  thead+=`<th class="r">Total (${mlabel(primaryMonth)})</th>`;
-  compareMonths.forEach(cm=>{ thead+=`<th class="r" style="opacity:.5">Total (${mlabel(cm)})</th>`; });
-  thead+='</tr>';
-
-  // Col totals
-  const colTotals={};
-  tls.forEach(tl=>{
-    allMonthsOrdered.forEach(m=>{ colTotals[`${tl}_${m}`]=0; });
-  });
-  const monthRowTotals={};
-  allMonthsOrdered.forEach(m=>{ monthRowTotals[m]=0; });
-
-  let tbody='';
-  slots.forEach((slot,i)=>{
-    let cells='';
-    const rowMonthSums={};
-    allMonthsOrdered.forEach(m=>{ rowMonthSums[m]=0; });
-
-    tls.forEach(tl=>{
-      const v=getVal(primaryMonth,tl,slot,i);
-      rowMonthSums[primaryMonth]+=v;
-      colTotals[`${tl}_${primaryMonth}`]+=v;
-      monthRowTotals[primaryMonth]+=v;
-      cells+=`<td class="r">${v||''}</td>`;
-      compareMonths.forEach(cm=>{
-        const vc=getVal(cm,tl,slot,i);
-        rowMonthSums[cm]+=vc;
-        colTotals[`${tl}_${cm}`]+=vc;
-        monthRowTotals[cm]+=vc;
-        cells+=`<td class="r" style="opacity:.5;color:var(--muted)">${vc||''}</td>`;
-      });
-    });
-
-    const label=isWeekly?`Week ${i+1} (${slot})`:slot;
-    let totalCells=`<td class="r"><strong>${rowMonthSums[primaryMonth]||''}</strong></td>`;
-    compareMonths.forEach(cm=>{ totalCells+=`<td class="r" style="opacity:.5"><strong>${rowMonthSums[cm]||''}</strong></td>`; });
-    tbody+=`<tr><td><strong>${label}</strong></td>${cells}${totalCells}</tr>`;
-  });
-
-  // MTD totals row
-  let totalCells='';
-  let grandTotals={};
-  allMonthsOrdered.forEach(m=>{ grandTotals[m]=0; });
-  tls.forEach(tl=>{
-    const v=colTotals[`${tl}_${primaryMonth}`];
-    grandTotals[primaryMonth]+=v;
-    totalCells+=`<td class="r" style="color:${TL_COLORS[tl]};font-weight:700">${v}</td>`;
-    compareMonths.forEach(cm=>{
-      const vc=colTotals[`${tl}_${cm}`];
-      grandTotals[cm]+=vc;
-      totalCells+=`<td class="r" style="opacity:.6;font-weight:700">${vc}</td>`;
-    });
-  });
-  let grandTotalCells=`<td class="r" style="font-weight:700">${grandTotals[primaryMonth]}</td>`;
-  compareMonths.forEach(cm=>{ grandTotalCells+=`<td class="r" style="opacity:.6;font-weight:700">${grandTotals[cm]}</td>`; });
-  tbody+=`<tr style="background:var(--page);border-top:2px solid var(--line)"><td><strong>MTD Total</strong></td>${totalCells}${grandTotalCells}</tr>`;
-
-  document.getElementById('trackerTable').innerHTML=`<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
-}
-
-function initTracker(){
-  const months=[...new Set(state.sales.map(s=>s.month))].sort().reverse();
-  const sel=document.getElementById('trackerMonth');
-  const cmp=document.getElementById('trackerCompare');
-  sel.innerHTML=months.map(m=>`<option value="${m}"${m===state.month?' selected':''}>${mlabel(m)}</option>`).join('');
-  cmp.innerHTML=months.map(m=>`<option value="${m}">${mlabel(m)}</option>`).join('');
-  renderTracker();
-}
-
+// ── Auth ─────────────────────────────────────────────────────
 function checkPwd(){
   const email=document.getElementById('emailInput').value.trim().toLowerCase();
   const pwd=document.getElementById('pwdInput').value;
@@ -537,12 +393,12 @@ function checkPwd(){
   if(pwd!=='CN2026'){err.textContent='Incorrect password.';document.getElementById('pwdInput').value='';document.getElementById('pwdInput').focus();return;}
   document.getElementById('loginScreen').style.display='none';
   sessionStorage.setItem('cn_auth','1');
-  sessionStorage.setItem('cn_email',email);
   loadAll();
 }
 document.getElementById('emailInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pwdInput').focus();});
 document.getElementById('pwdInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkPwd();});
 
+// ── Load data ─────────────────────────────────────────────────
 async function loadAll(){
   document.getElementById('loadingState').style.display='flex';
   document.getElementById('errorState').style.display='none';
@@ -551,27 +407,8 @@ async function loadAll(){
     const r=await fetch('/api/data');
     if(!r.ok)throw new Error(`Server error: HTTP ${r.status}`);
     const json=await r.json();
-    state.mom=json.momRows.map(r=>({
-      month:r.month,manager:r.manager,
-      entries:r.totalEntries,complete:r.complete,
-      achievement:r.achievement,refunds:r.refunds,
-      down:r.downPayment,loan:r.loanInProgress,
-      amount:r.completedAmount,target:r.target,
-      achPct:r.achievementPct,refRate:r.refundRate,
-      activeBdes:r.activeBdes,twd:r.totalWorkingDays,
-      ewd:r.workingDaysElapsed,ttd:r.targetTillDate,
-      deficit:r.mtdDeficit,reqDrr:r.requiredDrr,
-    }));
-    state.bde=json.bdeRows.map(r=>({
-      month:r.month,manager:r.manager,
-      counsellor:r.counsellor,key:r.counsellorKey,
-      entries:r.totalEntries,complete:r.complete,
-      achievement:r.achievement,refunds:r.refunds,
-      down:r.downPayment,loan:r.loanInProgress,
-      amount:r.completedAmount,target:r.target,
-      achPct:r.achievementPct,refRate:r.refundRate,
-      rank:r.overallRank,status:r.status,
-    }));
+    state.mom=json.momRows.map(r=>({month:r.month,manager:r.manager,entries:r.totalEntries,complete:r.complete,achievement:r.achievement,refunds:r.refunds,down:r.downPayment,loan:r.loanInProgress,amount:r.completedAmount,target:r.target,achPct:r.achievementPct,refRate:r.refundRate,activeBdes:r.activeBdes,twd:r.totalWorkingDays,ewd:r.workingDaysElapsed,ttd:r.targetTillDate,deficit:r.mtdDeficit,reqDrr:r.requiredDrr}));
+    state.bde=json.bdeRows.map(r=>({month:r.month,manager:r.manager,counsellor:r.counsellor,key:r.counsellorKey,entries:r.totalEntries,complete:r.complete,achievement:r.achievement,refunds:r.refunds,down:r.downPayment,loan:r.loanInProgress,amount:r.completedAmount,target:r.target,achPct:r.achievementPct,refRate:r.refundRate,rank:r.overallRank,status:r.status}));
     state.sales=json.sales||[];
     const months=[...new Set(state.mom.map(r=>r.month))].sort();
     if(!state.month||!months.includes(state.month))state.month=months.at(-1);
@@ -596,7 +433,7 @@ function renderAll(months){
   const mMom=state.mom.filter(r=>r.month===state.month);
   const mBde=state.bde.filter(r=>r.month===state.month);
   renderKPI(mMom);renderMOM(mMom);renderPace(mMom);renderLeader(mBde);renderStatus(mMom);renderTrend(state.mom);
-  initTracker();
+  initTracker();initReport();
 }
 
 function renderKPI(rows){
@@ -607,29 +444,18 @@ function renderKPI(rows){
   const amt=rows.reduce((a,r)=>a+r.amount,0);
   const ap=tgt?ach/tgt:0;
   document.getElementById('kpiGrid').innerHTML=`
-    <div class="kpi"><div class="kpi-label">Achievement</div>
-      <div class="kpi-value ${clsPct(ap)}">${fmtAch(ach)}</div>
-      <div class="kpi-sub">${pct(ap)} of ${fmt(tgt)} target</div></div>
-    <div class="kpi"><div class="kpi-label">Total Entries</div>
-      <div class="kpi-value">${fmt(ent)}</div>
-      <div class="kpi-sub">All dated dump rows</div></div>
-    <div class="kpi"><div class="kpi-label">Refund Rate</div>
-      <div class="kpi-value ${ref/Math.max(1,ent)>=0.2?'bad':'good'}">${pct(ent?ref/ent:0)}</div>
-      <div class="kpi-sub">${fmt(ref)} refund requests</div></div>
-    <div class="kpi"><div class="kpi-label">Completed Amount</div>
-      <div class="kpi-value">${money(amt)}</div>
-      <div class="kpi-sub">From RFD rows</div></div>`;
+    <div class="kpi"><div class="kpi-label">Achievement</div><div class="kpi-value ${clsPct(ap)}">${fmtAch(ach)}</div><div class="kpi-sub">${pct(ap)} of ${fmt(tgt)} target</div></div>
+    <div class="kpi"><div class="kpi-label">Total Entries</div><div class="kpi-value">${fmt(ent)}</div><div class="kpi-sub">All dated dump rows</div></div>
+    <div class="kpi"><div class="kpi-label">Refund Rate</div><div class="kpi-value ${ref/Math.max(1,ent)>=0.2?'bad':'good'}">${pct(ent?ref/ent:0)}</div><div class="kpi-sub">${fmt(ref)} refund requests</div></div>
+    <div class="kpi"><div class="kpi-label">Completed Amount</div><div class="kpi-value">${money(amt)}</div><div class="kpi-sub">From RFD rows</div></div>`;
 }
 
 function renderMOM(rows){
   document.getElementById('momRows').innerHTML=[...rows].sort((a,b)=>b.achPct-a.achPct).map(r=>`<tr>
-    <td><strong>${r.manager}</strong></td>
-    <td class="r">${fmt(r.entries)}</td><td class="r">${fmt(r.complete)}</td>
+    <td><strong>${r.manager}</strong></td><td class="r">${fmt(r.entries)}</td><td class="r">${fmt(r.complete)}</td>
     <td class="r">${fmtAch(r.achievement)}</td><td class="r">${fmt(r.target)}</td>
-    <td style="min-width:120px">
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,r.achPct*100).toFixed(1)}%;background:${barColor(r.achPct)}"></div></div>
-      <span class="${clsPct(r.achPct)}" style="font-size:11px">${pct(r.achPct)}</span>
-    </td>
+    <td style="min-width:120px"><div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,r.achPct*100).toFixed(1)}%;background:${barColor(r.achPct)}"></div></div>
+    <span class="${clsPct(r.achPct)}" style="font-size:11px">${pct(r.achPct)}</span></td>
     <td class="r ${r.deficit>0?'bad':'good'}">${r.deficit.toFixed(1)}</td>
     <td class="r">${r.reqDrr.toFixed(1)}</td>
     <td class="r ${r.refRate>=0.2?'bad':'good'}">${pct(r.refRate)}</td>
@@ -660,40 +486,27 @@ function renderLeader(rows){
   document.getElementById('leaderRows').innerHTML=top.map((r,i)=>{
     const bc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
     const st=r.status||(r.achPct>=1?'Ahead':r.achPct>=0.75?'On Track':r.refRate>=0.25?'At Risk':'Behind');
-    const sc=st==='Ahead'?'good':st==='On Track'?'warn':st==='At Risk'||st==='Behind'?'bad':'';
-    return`<tr>
-      <td><span class="rank-badge ${bc}">${i+1}</span></td>
-      <td><strong>${r.counsellor}</strong></td><td>${r.manager}</td>
+    const sc=st==='Ahead'?'good':st==='On Track'?'warn':'bad';
+    return`<tr><td><span class="rank-badge ${bc}">${i+1}</span></td><td><strong>${r.counsellor}</strong></td><td>${r.manager}</td>
       <td class="r">${fmtAch(r.achievement)}</td><td class="r">${fmt(r.target)}</td>
-      <td style="min-width:110px">
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,r.achPct*100).toFixed(1)}%;background:${barColor(r.achPct)}"></div></div>
-        <span class="${clsPct(r.achPct)}" style="font-size:11px">${pct(r.achPct)}</span>
-      </td>
+      <td style="min-width:110px"><div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,r.achPct*100).toFixed(1)}%;background:${barColor(r.achPct)}"></div></div>
+      <span class="${clsPct(r.achPct)}" style="font-size:11px">${pct(r.achPct)}</span></td>
       <td class="r ${r.refRate>=0.2?'bad':'good'}">${pct(r.refRate)}</td>
-      <td><span class="${sc}">${st}</span></td>
-    </tr>`;
+      <td><span class="${sc}">${st}</span></td></tr>`;
   }).join('');
 }
 
-function showLeads(bucket){
-  const salesForMonth=(state.sales||[]).filter(r=>r.month===state.month);
-  openModal(bucket,salesForMonth);
-}
+function showLeads(bucket){openModal(bucket,(state.sales||[]).filter(r=>r.month===state.month));}
 function openModal(bucket,salesRows){
   const n=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
   let filtered=(salesRows||[]).filter(r=>n(r.bucket)===n(bucket));
-  if(!filtered.length){
-    const kw=n(bucket).split(/\W+/).filter(Boolean);
-    filtered=(salesRows||[]).filter(r=>kw.some(k=>n(r.bucket||'').includes(k)));
-  }
+  if(!filtered.length){const kw=n(bucket).split(/\W+/).filter(Boolean);filtered=(salesRows||[]).filter(r=>kw.some(k=>n(r.bucket||'').includes(k)));}
   filtered.sort((a,b)=>parseDateToTs(b.date)-parseDateToTs(a.date));
   document.getElementById('modalTitle').textContent=`${bucket} — ${filtered.length} lead${filtered.length!==1?'s':''}`;
   document.getElementById('modalRows').innerHTML=filtered.length
-    ? filtered.map(r=>`<tr>
-        <td>${r.date}</td><td>${r.manager}</td><td>${r.counsellor}</td><td>${r.learner}</td>
+    ? filtered.map(r=>`<tr><td>${r.date}</td><td>${r.manager}</td><td>${r.counsellor}</td><td>${r.learner}</td>
         <td><span class="${n(r.bucket)==='complete/rfd'?'good':n(r.bucket)==='refund requested'?'bad':'warn'}">${r.bucket}</span></td>
-        <td class="r">₹${fmt(r.amount)}</td>
-      </tr>`).join('')
+        <td class="r">₹${fmt(r.amount)}</td></tr>`).join('')
     : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No records found</td></tr>';
   document.getElementById('modalOverlay').style.display='flex';
 }
@@ -703,59 +516,291 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 function renderStatus(rows){
   const t={c:0,r:0,d:0,l:0,tot:0};
   for(const r of rows){t.c+=r.complete;t.r+=r.refunds;t.d+=r.down;t.l+=r.loan;t.tot+=r.entries;}
-  const items=[
-    ['Complete / RFD',t.c,'#15803d','Complete/RFD'],
-    ['Refund Requested',t.r,'#b42318','Refund Requested'],
-    ['Down Payment',t.d,'#b7791f','Down Payment'],
-    ['Loan In Progress',t.l,'#1d4ed8','Loan In Progress'],
-  ];
+  const items=[['Complete / RFD',t.c,'#15803d','Complete/RFD'],['Refund Requested',t.r,'#b42318','Refund Requested'],['Down Payment',t.d,'#b7791f','Down Payment'],['Loan In Progress',t.l,'#1d4ed8','Loan In Progress']];
   document.getElementById('statusSplit').innerHTML=items.map(([lbl,val,col,bucket])=>`
     <div class="status-card" onclick="showLeads('${bucket}')">
-      <div class="status-head"><strong>${lbl}</strong>
-        <span style="display:flex;align-items:center;gap:6px">
-          <span style="color:${col};font-weight:700">${fmt(val)}</span>
-          <span style="font-size:10px;color:var(--muted)">tap for details →</span>
-        </span>
-      </div>
+      <div class="status-head"><strong>${lbl}</strong><span style="display:flex;align-items:center;gap:6px"><span style="color:${col};font-weight:700">${fmt(val)}</span><span style="font-size:10px;color:var(--muted)">tap →</span></span></div>
       <div class="bar-track"><div class="bar-fill" style="width:${t.tot?Math.min(100,(val/t.tot)*100).toFixed(1):0}%;background:${col}"></div></div>
     </div>`).join('');
   if(statusChart)statusChart.destroy();
-  statusChart=new Chart(document.getElementById('statusChart'),{
-    type:'doughnut',
-    data:{labels:items.map(i=>i[0]),datasets:[{data:items.map(i=>i[1]),backgroundColor:items.map(i=>i[2]),borderWidth:2,borderColor:'var(--panel)'}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}
+  statusChart=new Chart(document.getElementById('statusChart'),{type:'doughnut',data:{labels:items.map(i=>i[0]),datasets:[{data:items.map(i=>i[1]),backgroundColor:items.map(i=>i[2]),borderWidth:2,borderColor:'var(--panel)'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}});
+  document.getElementById('statusLegend').innerHTML=items.map(([lbl,val,col])=>`<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:2px;background:${col};display:inline-block"></span>${lbl} (${fmt(val)})</span>`).join('');
+}
+
+// ── Daily Tracker ─────────────────────────────────────────────
+function getDaysInMonth(mk){const[y,m]=mk.split('-').map(Number);const days=[];const end=new Date(Date.UTC(y,m,0)).getUTCDate();for(let d=1;d<=end;d++)days.push(String(d).padStart(2,'0'));return days;}
+function getWeeksInMonth(mk){const[y,m]=mk.split('-').map(Number);const end=new Date(Date.UTC(y,m,0)).getUTCDate();const weeks=[];for(let d=1;d<=end;d+=7){const from=d,to=Math.min(d+6,end);weeks.push({label:`${String(from).padStart(2,'0')}–${String(to).padStart(2,'0')}`,from,to});}return weeks;}
+function countEntriesByDay(sales,mk,manager){
+  const map={};
+  for(const s of sales){
+    if(s.month!==mk)continue;
+    if(manager&&manager!=='All'&&s.manager!==manager)continue;
+    const str=String(s.date||'').trim();const sep=str.includes('/')?'/':'-';const p=str.split(sep);let day='';
+    if(p.length===3){const a=Number(p[0]),c=Number(p[2]);day=a>=1000?String(Number(p[2])).padStart(2,'0'):String(Number(p[0])).padStart(2,'0');}
+    if(day)map[day]=(map[day]||0)+1;
+  }
+  return map;
+}
+
+function renderTracker(){
+  const primaryMonth=document.getElementById('trackerMonth').value;
+  const compareMonths=[...document.getElementById('trackerCompare').selectedOptions].map(o=>o.value).filter(Boolean);
+  const tlFilter=document.getElementById('trackerTL').value;
+  const view=document.getElementById('trackerView').value;
+  if(!primaryMonth||!state.sales.length)return;
+  const tls=tlFilter==='All'?MANAGERS:[tlFilter];
+  const allMonths=[primaryMonth,...compareMonths];
+  const allCounts={};
+  allMonths.forEach(m=>{allCounts[m]={};tls.forEach(tl=>{allCounts[m][tl]=countEntriesByDay(state.sales,m,tl);});});
+  const isWeekly=view==='weekly';
+  const weeks=getWeeksInMonth(primaryMonth);
+  const slots=isWeekly?weeks.map(w=>w.label):getDaysInMonth(primaryMonth);
+  function getVal(mk,tl,slot,idx){
+    if(!isWeekly)return allCounts[mk]?.[tl]?.[slot]||0;
+    const w=weeks[idx];let sum=0;
+    for(let d=w.from;d<=w.to;d++)sum+=allCounts[mk]?.[tl]?.[String(d).padStart(2,'0')]||0;
+    return sum;
+  }
+  if(trackerChart)trackerChart.destroy();
+  const datasets=[];
+  tls.forEach(tl=>{
+    datasets.push({label:`${tl} (${mlabel(primaryMonth)})`,data:slots.map((_,i)=>getVal(primaryMonth,tl,slots[i],i)),borderColor:TL_COLORS[tl],backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,tension:.3});
+    compareMonths.forEach((cm,ci)=>{
+      const dash=ci===0?[6,3]:ci===1?[2,2]:[6,2,2,2];
+      datasets.push({label:`${tl} (${mlabel(cm)})`,data:slots.map((_,i)=>getVal(cm,tl,slots[i],i)),borderColor:`${TL_COLORS[tl]}${ci===0?'99':'66'}`,backgroundColor:'transparent',borderWidth:1.5,borderDash:dash,pointRadius:3,tension:.3});
+    });
   });
-  document.getElementById('statusLegend').innerHTML=items.map(([lbl,val,col])=>
-    `<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:2px;background:${col};display:inline-block"></span>${lbl} (${fmt(val)})</span>`
-  ).join('');
+  trackerChart=new Chart(document.getElementById('trackerChart'),{type:'line',data:{labels:slots,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:20}}},scales:{x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:isWeekly?6:15},grid:{display:false}},y:{ticks:{font:{size:11},stepSize:1},grid:{color:'rgba(0,0,0,.05)'}}}}});
+  // Table
+  let thead='<tr><th>Date</th>';
+  tls.forEach(tl=>{thead+=`<th class="r" style="color:${TL_COLORS[tl]}">${tl} (${mlabel(primaryMonth)})</th>`;compareMonths.forEach(cm=>{thead+=`<th class="r" style="color:${TL_COLORS[tl]};opacity:.5">${tl} (${mlabel(cm)})</th>`;});});
+  thead+=`<th class="r">Total (${mlabel(primaryMonth)})</th>`;compareMonths.forEach(cm=>{thead+=`<th class="r" style="opacity:.5">Total (${mlabel(cm)})</th>`;});thead+='</tr>';
+  const colTotals={};allMonths.forEach(m=>{tls.forEach(tl=>{colTotals[`${tl}_${m}`]=0;});});
+  let tbody='';
+  slots.forEach((slot,i)=>{
+    let cells='';const rowMonthSums={};allMonths.forEach(m=>{rowMonthSums[m]=0;});
+    tls.forEach(tl=>{
+      const v=getVal(primaryMonth,tl,slot,i);rowMonthSums[primaryMonth]+=v;colTotals[`${tl}_${primaryMonth}`]+=v;cells+=`<td class="r">${v||''}</td>`;
+      compareMonths.forEach(cm=>{const vc=getVal(cm,tl,slot,i);rowMonthSums[cm]+=vc;colTotals[`${tl}_${cm}`]+=vc;cells+=`<td class="r" style="opacity:.5;color:var(--muted)">${vc||''}</td>`;});
+    });
+    const label=isWeekly?`Week ${i+1} (${slot})`:slot;
+    let tCells=`<td class="r"><strong>${rowMonthSums[primaryMonth]||''}</strong></td>`;compareMonths.forEach(cm=>{tCells+=`<td class="r" style="opacity:.5"><strong>${rowMonthSums[cm]||''}</strong></td>`;});
+    tbody+=`<tr><td><strong>${label}</strong></td>${cells}${tCells}</tr>`;
+  });
+  const grandTotals={};allMonths.forEach(m=>{grandTotals[m]=0;});
+  let totalCells='';
+  tls.forEach(tl=>{const v=colTotals[`${tl}_${primaryMonth}`];grandTotals[primaryMonth]+=v;totalCells+=`<td class="r" style="color:${TL_COLORS[tl]};font-weight:700">${v}</td>`;compareMonths.forEach(cm=>{const vc=colTotals[`${tl}_${cm}`];grandTotals[cm]+=vc;totalCells+=`<td class="r" style="opacity:.6;font-weight:700">${vc}</td>`;});});
+  let gTCells=`<td class="r" style="font-weight:700">${grandTotals[primaryMonth]}</td>`;compareMonths.forEach(cm=>{gTCells+=`<td class="r" style="opacity:.6;font-weight:700">${grandTotals[cm]}</td>`;});
+  tbody+=`<tr style="background:var(--page);border-top:2px solid var(--line)"><td><strong>MTD Total</strong></td>${totalCells}${gTCells}</tr>`;
+  document.getElementById('trackerTable').innerHTML=`<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+}
+
+function initTracker(){
+  const months=[...new Set(state.sales.map(s=>s.month))].sort().reverse();
+  const sel=document.getElementById('trackerMonth');
+  const cmp=document.getElementById('trackerCompare');
+  sel.innerHTML=months.map(m=>`<option value="${m}"${m===state.month?' selected':''}>${mlabel(m)}</option>`).join('');
+  cmp.innerHTML=months.map(m=>`<option value="${m}">${mlabel(m)}</option>`).join('');
+  renderTracker();
+}
+
+// ── Custom Report Builder ─────────────────────────────────────
+const REPORT_STORAGE_KEY='cn_report_settings';
+const METRIC_LABELS={entries:'Entries',complete:'RFD',achievement:'Achievement',refunds:'Refunds',refRate:'Refund %',achPct:'Ach %',amount:'Amount',down:'Down Payment'};
+
+function initReport(){
+  const months=[...new Set(state.bde.map(r=>r.month))].sort().reverse();
+  const mSel=document.getElementById('reportMonths');
+  mSel.innerHTML=months.map(m=>`<option value="${m}">${mlabel(m)}</option>`).join('');
+  // Restore saved settings
+  try{
+    const saved=JSON.parse(localStorage.getItem(REPORT_STORAGE_KEY)||'{}');
+    if(saved.months) [...mSel.options].forEach(o=>{o.selected=saved.months.includes(o.value);});
+    if(saved.team) document.getElementById('reportTeam').value=saved.team;
+    if(saved.metrics) document.querySelectorAll('#metricGrid input').forEach(cb=>{cb.checked=saved.metrics.includes(cb.value);});
+  }catch(e){}
+  refreshBdeChecklist();
+}
+
+function refreshBdeChecklist(){
+  const team=document.getElementById('reportTeam').value;
+  // Get all unique BDEs from bde data
+  const bdes=[...new Map(state.bde.filter(r=>team==='All'||r.manager===team).map(r=>[r.key,{name:r.counsellor,manager:r.manager,key:r.key}])).values()].sort((a,b)=>a.name.localeCompare(b.name));
+  // Restore saved BDE selections
+  let savedBdes=[];
+  try{savedBdes=JSON.parse(localStorage.getItem(REPORT_STORAGE_KEY)||'{}').bdes||[];}catch(e){}
+  document.getElementById('bdeChecklist').innerHTML=bdes.map(b=>`
+    <label class="bde-item">
+      <input type="checkbox" value="${b.key}" data-name="${b.name}" data-manager="${b.manager}" ${savedBdes.length===0||savedBdes.includes(b.key)?'checked':''} onchange="saveReportSettings()">
+      <span>${b.name} <span style="color:var(--muted);font-size:10px">(${b.manager})</span></span>
+    </label>`).join('');
+}
+
+function selectAllBdes(){document.querySelectorAll('#bdeChecklist input').forEach(cb=>{cb.checked=true;});saveReportSettings();}
+function deselectAllBdes(){document.querySelectorAll('#bdeChecklist input').forEach(cb=>{cb.checked=false;});saveReportSettings();}
+
+function saveReportSettings(){
+  const settings={
+    months:[...document.getElementById('reportMonths').selectedOptions].map(o=>o.value),
+    team:document.getElementById('reportTeam').value,
+    bdes:[...document.querySelectorAll('#bdeChecklist input:checked')].map(cb=>cb.value),
+    metrics:[...document.querySelectorAll('#metricGrid input:checked')].map(cb=>cb.value),
+  };
+  localStorage.setItem(REPORT_STORAGE_KEY,JSON.stringify(settings));
+}
+
+function buildReport(){
+  saveReportSettings();
+  const months=[...document.getElementById('reportMonths').selectedOptions].map(o=>o.value);
+  const selectedBdes=[...document.querySelectorAll('#bdeChecklist input:checked')].map(cb=>({key:cb.value,name:cb.dataset.name,manager:cb.dataset.manager}));
+  const metrics=[...document.querySelectorAll('#metricGrid input:checked')].map(cb=>cb.value);
+
+  if(!months.length){document.getElementById('reportOutput').innerHTML='<div style="color:var(--muted);padding:20px">Please select at least one month.</div>';return;}
+  if(!selectedBdes.length){document.getElementById('reportOutput').innerHTML='<div style="color:var(--muted);padding:20px">Please select at least one BDE.</div>';return;}
+
+  // Filter BDE data
+  const filtered=state.bde.filter(r=>months.includes(r.month)&&selectedBdes.some(b=>b.key===r.key));
+
+  // Summary totals across all months
+  const totals={entries:0,complete:0,achievement:0,refunds:0,amount:0,down:0};
+  filtered.forEach(r=>{totals.entries+=r.entries;totals.complete+=r.complete;totals.achievement+=r.achievement;totals.refunds+=r.refunds;totals.amount+=r.amount;totals.down+=r.down;});
+  const totalRefRate=totals.entries?totals.refunds/totals.entries:0;
+  const activeBdeNames=[...new Set(filtered.filter(r=>r.entries>0).map(r=>r.counsellor))];
+
+  // Summary KPI cards
+  const kpiHtml=`
+    <div class="report-kpi-grid">
+      ${metrics.includes('entries')?`<div class="report-kpi"><div class="report-kpi-label">Total Entries</div><div class="report-kpi-value">${fmt(totals.entries)}</div><div class="report-kpi-sub">Across ${months.length} month${months.length>1?'s':''}</div></div>`:''}
+      ${metrics.includes('complete')?`<div class="report-kpi"><div class="report-kpi-label">RFD</div><div class="report-kpi-value good">${fmt(totals.complete)}</div></div>`:''}
+      ${metrics.includes('achievement')?`<div class="report-kpi"><div class="report-kpi-label">Achievement</div><div class="report-kpi-value" style="color:var(--teal)">${fmtAch(totals.achievement)}</div></div>`:''}
+      ${metrics.includes('refunds')?`<div class="report-kpi"><div class="report-kpi-label">Refunds</div><div class="report-kpi-value bad">${fmt(totals.refunds)}</div></div>`:''}
+      ${metrics.includes('refRate')?`<div class="report-kpi"><div class="report-kpi-label">Refund Rate</div><div class="report-kpi-value ${totalRefRate>=0.2?'bad':'good'}">${pct(totalRefRate)}</div></div>`:''}
+      ${metrics.includes('amount')?`<div class="report-kpi"><div class="report-kpi-label">Amount</div><div class="report-kpi-value">${money(totals.amount)}</div></div>`:''}
+      <div class="report-kpi"><div class="report-kpi-label">Active BDEs</div><div class="report-kpi-value">${activeBdeNames.length}</div><div class="report-kpi-sub">out of ${selectedBdes.length} selected</div></div>
+    </div>`;
+
+  // Active BDE tags
+  const activeBdesHtml=`
+    <div style="margin-top:4px">
+      <div class="ctrl-label" style="margin-bottom:8px">Active BDEs in period</div>
+      <div class="active-bdes-list">
+        ${activeBdeNames.map(name=>{const b=selectedBdes.find(x=>x.name===name);return`<span class="bde-tag" style="border-color:${TL_COLORS[b?.manager||'Azhaan']}22"><span style="width:6px;height:6px;border-radius:50%;background:${TL_COLORS[b?.manager||'Azhaan']};display:inline-block"></span>${name}</span>`;}).join('')}
+        ${selectedBdes.filter(b=>!activeBdeNames.includes(b.name)).map(b=>`<span class="bde-tag" style="opacity:.4">${b.name}</span>`).join('')}
+      </div>
+    </div>`;
+
+  // BDE breakdown table (rows=BDEs, cols=months)
+  let thead='<tr><th>BDE</th><th>Team</th>';
+  months.forEach(m=>{
+    metrics.forEach(met=>{ thead+=`<th class="r">${METRIC_LABELS[met]} (${mlabel(m)})</th>`; });
+  });
+  thead+='</tr>';
+
+  let tbody='';
+  // Grand total row data
+  const grandTotals={};months.forEach(m=>{grandTotals[m]={entries:0,complete:0,achievement:0,refunds:0,amount:0,down:0,count:0};});
+
+  selectedBdes.forEach(bde=>{
+    const isActive=activeBdeNames.includes(bde.name);
+    let cells='';
+    months.forEach(m=>{
+      const row=filtered.find(r=>r.month===m&&r.key===bde.key);
+      const v={entries:row?.entries||0,complete:row?.complete||0,achievement:row?.achievement||0,refunds:row?.refunds||0,refRate:row?.refRate||0,achPct:row?.achPct||0,amount:row?.amount||0,down:row?.down||0};
+      if(row){grandTotals[m].entries+=v.entries;grandTotals[m].complete+=v.complete;grandTotals[m].achievement+=v.achievement;grandTotals[m].refunds+=v.refunds;grandTotals[m].amount+=v.amount;grandTotals[m].down+=v.down;grandTotals[m].count++;}
+      metrics.forEach(met=>{
+        if(met==='refRate')cells+=`<td class="r ${v.refRate>=0.2?'bad':''}">${row?pct(v.refRate):'-'}</td>`;
+        else if(met==='achPct')cells+=`<td class="r ${clsPct(v.achPct)}">${row?pct(v.achPct):'-'}</td>`;
+        else if(met==='achievement')cells+=`<td class="r">${row?fmtAch(v.achievement):'-'}</td>`;
+        else if(met==='amount')cells+=`<td class="r">${row?money(v.amount):'-'}</td>`;
+        else cells+=`<td class="r">${row?fmt(v[met]):'-'}</td>`;
+      });
+    });
+    tbody+=`<tr style="${!isActive?'opacity:.5':''}">
+      <td><strong>${bde.name}</strong>${!isActive?'<span style="font-size:10px;color:var(--muted)"> (inactive)</span>':''}</td>
+      <td><span style="color:${TL_COLORS[bde.manager]};font-weight:600">${bde.manager}</span></td>
+      ${cells}
+    </tr>`;
+  });
+
+  // Grand total row
+  let gtCells='';
+  months.forEach(m=>{
+    const g=grandTotals[m];
+    const gRefRate=g.entries?g.refunds/g.entries:0;
+    metrics.forEach(met=>{
+      if(met==='refRate')gtCells+=`<td class="r ${gRefRate>=0.2?'bad':''}" style="font-weight:700">${pct(gRefRate)}</td>`;
+      else if(met==='achPct')gtCells+=`<td class="r" style="font-weight:700">—</td>`;
+      else if(met==='achievement')gtCells+=`<td class="r" style="font-weight:700">${fmtAch(g.achievement)}</td>`;
+      else if(met==='amount')gtCells+=`<td class="r" style="font-weight:700">${money(g.amount)}</td>`;
+      else gtCells+=`<td class="r" style="font-weight:700">${fmt(g[met])}</td>`;
+    });
+  });
+  tbody+=`<tr style="background:var(--page);border-top:2px solid var(--line)"><td><strong>Total</strong></td><td></td>${gtCells}</tr>`;
+
+  document.getElementById('reportOutput').innerHTML=`
+    ${kpiHtml}
+    ${activeBdesHtml}
+    <div class="table-wrap" style="margin-top:8px"><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+}
+
+// ── Export functions ──────────────────────────────────────────
+function exportReportText(){
+  const months=[...document.getElementById('reportMonths').selectedOptions].map(o=>o.value);
+  const selectedBdes=[...document.querySelectorAll('#bdeChecklist input:checked')].map(cb=>({key:cb.value,name:cb.dataset.name,manager:cb.dataset.manager}));
+  const metrics=[...document.querySelectorAll('#metricGrid input:checked')].map(cb=>cb.value);
+  if(!months.length||!selectedBdes.length){alert('Please generate a report first.');return;}
+  const filtered=state.bde.filter(r=>months.includes(r.month)&&selectedBdes.some(b=>b.key===r.key));
+  let text=`📊 Custom Report — ${months.map(mlabel).join(', ')}\n`;
+  text+=`BDEs: ${selectedBdes.map(b=>b.name).join(', ')}\n\n`;
+  selectedBdes.forEach(bde=>{
+    text+=`👤 ${bde.name} (${bde.manager})\n`;
+    months.forEach(m=>{
+      const row=filtered.find(r=>r.month===m&&r.key===bde.key);
+      if(row){text+=`  ${mlabel(m)}: Entries ${row.entries} | RFD ${row.complete} | Ach ${fmtAch(row.achievement)} | Refunds ${row.refunds}\n`;}
+    });
+    text+='\n';
+  });
+  navigator.clipboard.writeText(text).then(()=>alert('Copied to clipboard!'));
+}
+
+function exportReportCSV(){
+  const months=[...document.getElementById('reportMonths').selectedOptions].map(o=>o.value);
+  const selectedBdes=[...document.querySelectorAll('#bdeChecklist input:checked')].map(cb=>({key:cb.value,name:cb.dataset.name,manager:cb.dataset.manager}));
+  const metrics=[...document.querySelectorAll('#metricGrid input:checked')].map(cb=>cb.value);
+  if(!months.length||!selectedBdes.length){alert('Please generate a report first.');return;}
+  const filtered=state.bde.filter(r=>months.includes(r.month)&&selectedBdes.some(b=>b.key===r.key));
+  let csv='BDE,Team';
+  months.forEach(m=>{metrics.forEach(met=>{csv+=`,${METRIC_LABELS[met]} (${mlabel(m)})`;});});
+  csv+='\n';
+  selectedBdes.forEach(bde=>{
+    csv+=`${bde.name},${bde.manager}`;
+    months.forEach(m=>{
+      const row=filtered.find(r=>r.month===m&&r.key===bde.key);
+      metrics.forEach(met=>{
+        const v=row?row[met==='refRate'?'refRate':met==='achPct'?'achPct':met]||0:0;
+        csv+=`,${met==='refRate'||met==='achPct'?pct(v):met==='achievement'?fmtAch(v):fmt(v)}`;
+      });
+    });
+    csv+='\n';
+  });
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cn_report.csv';a.click();
 }
 
 function renderTrend(momRows){
   const all=[...new Set(momRows.map(r=>r.month))].sort();
   if(trendChart)trendChart.destroy();
-  trendChart=new Chart(document.getElementById('trendChart'),{
-    type:'bar',
-    data:{labels:all.map(mlabel),datasets:[
-      {label:'Achievement',data:all.map(m=>momRows.filter(r=>r.month===m).reduce((a,r)=>a+r.achievement,0)),backgroundColor:'rgba(8,127,140,.75)',borderRadius:4},
-      {label:'Target',data:all.map(m=>momRows.filter(r=>r.month===m).reduce((a,r)=>a+r.target,0)),type:'line',borderColor:'#b42318',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#b42318',tension:.3}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{ticks:{font:{size:11},maxRotation:45},grid:{display:false}},y:{ticks:{font:{size:11}},grid:{color:'rgba(0,0,0,.05)'}}}}
-  });
-  document.getElementById('trendLegend').innerHTML=`
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:2px;background:rgba(8,127,140,.75);display:inline-block"></span>Achievement</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:2px;background:#b42318;display:inline-block"></span>Target</span>`;
+  trendChart=new Chart(document.getElementById('trendChart'),{type:'bar',data:{labels:all.map(mlabel),datasets:[{label:'Achievement',data:all.map(m=>momRows.filter(r=>r.month===m).reduce((a,r)=>a+r.achievement,0)),backgroundColor:'rgba(8,127,140,.75)',borderRadius:4},{label:'Target',data:all.map(m=>momRows.filter(r=>r.month===m).reduce((a,r)=>a+r.target,0)),type:'line',borderColor:'#b42318',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#b42318',tension:.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45},grid:{display:false}},y:{ticks:{font:{size:11}},grid:{color:'rgba(0,0,0,.05)'}}}}});
+  document.getElementById('trendLegend').innerHTML=`<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:2px;background:rgba(8,127,140,.75);display:inline-block"></span>Achievement</span><span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:2px;background:#b42318;display:inline-block"></span>Target</span>`;
 }
 
 function goTo(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});}
 document.getElementById('monthSelect').addEventListener('change',e=>{state.month=e.target.value;renderAll();});
+document.getElementById('reportMonths').addEventListener('change',saveReportSettings);
 
 if(sessionStorage.getItem('cn_auth')==='1'){
-  document.getElementById('loginScreen').style.display='none';
-  loadAll();
-} else {
-  document.getElementById('emailInput').focus();
-}
+  document.getElementById('loginScreen').style.display='none';loadAll();
+}else{document.getElementById('emailInput').focus();}
 </script>
 </body>
 </html>
