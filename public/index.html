@@ -338,10 +338,11 @@ td.r,th.r{text-align:right}
                 <label class="metric-item"><input type="checkbox" value="entries" checked onchange="buildReport()"> Entries</label>
                 <label class="metric-item"><input type="checkbox" value="complete" checked onchange="buildReport()"> RFD</label>
                 <label class="metric-item"><input type="checkbox" value="achievement" checked onchange="buildReport()"> Achievement</label>
+                <label class="metric-item"><input type="checkbox" value="target" checked onchange="buildReport()"> Target</label>
                 <label class="metric-item"><input type="checkbox" value="refunds" checked onchange="buildReport()"> Refunds</label>
                 <label class="metric-item"><input type="checkbox" value="refRate" checked onchange="buildReport()"> Refund %</label>
                 <label class="metric-item"><input type="checkbox" value="achPct" checked onchange="buildReport()"> Ach %</label>
-                <label class="metric-item"><input type="checkbox" value="amount" onchange="buildReport()"> Amount</label>
+                <label class="metric-item"><input type="checkbox" value="amount" onchange="buildReport()"> Revenue (RFD)</label>
                 <label class="metric-item"><input type="checkbox" value="down" onchange="buildReport()"> Down Payment</label>
               </div>
             </div>
@@ -606,7 +607,7 @@ function initTracker(){
 
 // ── Custom Report Builder ─────────────────────────────────────
 const REPORT_STORAGE_KEY='cn_report_settings';
-const METRIC_LABELS={entries:'Entries',complete:'RFD',achievement:'Achievement',refunds:'Refunds',refRate:'Refund %',achPct:'Ach %',amount:'Amount',down:'Down Payment'};
+const METRIC_LABELS={entries:'Entries',complete:'RFD',achievement:'Achievement',target:'Target',refunds:'Refunds',refRate:'Refund %',achPct:'Ach %',amount:'Revenue (RFD)',down:'Down Payment'};
 
 function initReport(){
   const months=[...new Set(state.bde.map(r=>r.month))].sort().reverse();
@@ -624,9 +625,16 @@ function initReport(){
 
 function refreshBdeChecklist(){
   const team=document.getElementById('reportTeam').value;
-  // Get all unique BDEs from bde data
-  const bdes=[...new Map(state.bde.filter(r=>team==='All'||r.manager===team).map(r=>[r.key,{name:r.counsellor,manager:r.manager,key:r.key}])).values()].sort((a,b)=>a.name.localeCompare(b.name));
-  // Restore saved BDE selections
+  const selectedMonths=[...document.getElementById('reportMonths').selectedOptions].map(o=>o.value);
+
+  // Only show BDEs who belonged to the selected team IN the selected months
+  // If no months selected, show all
+  const relevantBde=selectedMonths.length>0
+    ? state.bde.filter(r=>selectedMonths.includes(r.month)&&(team==='All'||r.manager===team))
+    : state.bde.filter(r=>team==='All'||r.manager===team);
+
+  const bdes=[...new Map(relevantBde.map(r=>[r.key,{name:r.counsellor,manager:r.manager,key:r.key}])).values()].sort((a,b)=>a.name.localeCompare(b.name));
+
   let savedBdes=[];
   try{savedBdes=JSON.parse(localStorage.getItem(REPORT_STORAGE_KEY)||'{}').bdes||[];}catch(e){}
   document.getElementById('bdeChecklist').innerHTML=bdes.map(b=>`
@@ -661,9 +669,17 @@ function buildReport(){
   // Filter BDE data
   const filtered=state.bde.filter(r=>months.includes(r.month)&&selectedBdes.some(b=>b.key===r.key));
 
-  // Summary totals across all months
-  const totals={entries:0,complete:0,achievement:0,refunds:0,amount:0,down:0};
-  filtered.forEach(r=>{totals.entries+=r.entries;totals.complete+=r.complete;totals.achievement+=r.achievement;totals.refunds+=r.refunds;totals.amount+=r.amount;totals.down+=r.down;});
+  // Summary totals across all months — only selected BDEs
+  const totals={entries:0,complete:0,achievement:0,target:0,refunds:0,amount:0,down:0};
+  filtered.forEach(r=>{
+    totals.entries+=r.entries;
+    totals.complete+=r.complete;
+    totals.achievement+=r.achievement;
+    totals.target+=r.target; // fix #3: only sum targets of selected BDEs
+    totals.refunds+=r.refunds;
+    totals.amount+=r.amount; // amount in bde rows is already RFD-only (completedAmount)
+    totals.down+=r.down;
+  });
   const totalRefRate=totals.entries?totals.refunds/totals.entries:0;
   const activeBdeNames=[...new Set(filtered.filter(r=>r.entries>0).map(r=>r.counsellor))];
 
@@ -673,9 +689,10 @@ function buildReport(){
       ${metrics.includes('entries')?`<div class="report-kpi"><div class="report-kpi-label">Total Entries</div><div class="report-kpi-value">${fmt(totals.entries)}</div><div class="report-kpi-sub">Across ${months.length} month${months.length>1?'s':''}</div></div>`:''}
       ${metrics.includes('complete')?`<div class="report-kpi"><div class="report-kpi-label">RFD</div><div class="report-kpi-value good">${fmt(totals.complete)}</div></div>`:''}
       ${metrics.includes('achievement')?`<div class="report-kpi"><div class="report-kpi-label">Achievement</div><div class="report-kpi-value" style="color:var(--teal)">${fmtAch(totals.achievement)}</div></div>`:''}
+      ${metrics.includes('target')?`<div class="report-kpi"><div class="report-kpi-label">Target</div><div class="report-kpi-value">${fmt(totals.target)}</div><div class="report-kpi-sub">${totals.target?((totals.achievement/totals.target)*100).toFixed(1):0}% achieved</div></div>`:''}
       ${metrics.includes('refunds')?`<div class="report-kpi"><div class="report-kpi-label">Refunds</div><div class="report-kpi-value bad">${fmt(totals.refunds)}</div></div>`:''}
       ${metrics.includes('refRate')?`<div class="report-kpi"><div class="report-kpi-label">Refund Rate</div><div class="report-kpi-value ${totalRefRate>=0.2?'bad':'good'}">${pct(totalRefRate)}</div></div>`:''}
-      ${metrics.includes('amount')?`<div class="report-kpi"><div class="report-kpi-label">Amount</div><div class="report-kpi-value">${money(totals.amount)}</div></div>`:''}
+      ${metrics.includes('amount')?`<div class="report-kpi"><div class="report-kpi-label">Revenue (RFD)</div><div class="report-kpi-value">${money(totals.amount)}</div><div class="report-kpi-sub">Completed rows only</div></div>`:''}
       <div class="report-kpi"><div class="report-kpi-label">Active BDEs</div><div class="report-kpi-value">${activeBdeNames.length}</div><div class="report-kpi-sub">out of ${selectedBdes.length} selected</div></div>
     </div>`;
 
@@ -698,15 +715,15 @@ function buildReport(){
 
   let tbody='';
   // Grand total row data
-  const grandTotals={};months.forEach(m=>{grandTotals[m]={entries:0,complete:0,achievement:0,refunds:0,amount:0,down:0,count:0};});
+  const grandTotals={};months.forEach(m=>{grandTotals[m]={entries:0,complete:0,achievement:0,target:0,refunds:0,amount:0,down:0,count:0};});
 
   selectedBdes.forEach(bde=>{
     const isActive=activeBdeNames.includes(bde.name);
     let cells='';
     months.forEach(m=>{
       const row=filtered.find(r=>r.month===m&&r.key===bde.key);
-      const v={entries:row?.entries||0,complete:row?.complete||0,achievement:row?.achievement||0,refunds:row?.refunds||0,refRate:row?.refRate||0,achPct:row?.achPct||0,amount:row?.amount||0,down:row?.down||0};
-      if(row){grandTotals[m].entries+=v.entries;grandTotals[m].complete+=v.complete;grandTotals[m].achievement+=v.achievement;grandTotals[m].refunds+=v.refunds;grandTotals[m].amount+=v.amount;grandTotals[m].down+=v.down;grandTotals[m].count++;}
+      const v={entries:row?.entries||0,complete:row?.complete||0,achievement:row?.achievement||0,target:row?.target||0,refunds:row?.refunds||0,refRate:row?.refRate||0,achPct:row?.achPct||0,amount:row?.amount||0,down:row?.down||0};
+      if(row){grandTotals[m].entries+=v.entries;grandTotals[m].complete+=v.complete;grandTotals[m].achievement+=v.achievement;grandTotals[m].target+=v.target;grandTotals[m].refunds+=v.refunds;grandTotals[m].amount+=v.amount;grandTotals[m].down+=v.down;grandTotals[m].count++;}
       metrics.forEach(met=>{
         if(met==='refRate')cells+=`<td class="r ${v.refRate>=0.2?'bad':''}">${row?pct(v.refRate):'-'}</td>`;
         else if(met==='achPct')cells+=`<td class="r ${clsPct(v.achPct)}">${row?pct(v.achPct):'-'}</td>`;
@@ -727,9 +744,10 @@ function buildReport(){
   months.forEach(m=>{
     const g=grandTotals[m];
     const gRefRate=g.entries?g.refunds/g.entries:0;
+    const gAchPct=g.target?g.achievement/g.target:0;
     metrics.forEach(met=>{
       if(met==='refRate')gtCells+=`<td class="r ${gRefRate>=0.2?'bad':''}" style="font-weight:700">${pct(gRefRate)}</td>`;
-      else if(met==='achPct')gtCells+=`<td class="r" style="font-weight:700">—</td>`;
+      else if(met==='achPct')gtCells+=`<td class="r ${clsPct(gAchPct)}" style="font-weight:700">${pct(gAchPct)}</td>`;
       else if(met==='achievement')gtCells+=`<td class="r" style="font-weight:700">${fmtAch(g.achievement)}</td>`;
       else if(met==='amount')gtCells+=`<td class="r" style="font-weight:700">${money(g.amount)}</td>`;
       else gtCells+=`<td class="r" style="font-weight:700">${fmt(g[met])}</td>`;
@@ -796,7 +814,7 @@ function renderTrend(momRows){
 
 function goTo(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});}
 document.getElementById('monthSelect').addEventListener('change',e=>{state.month=e.target.value;renderAll();});
-document.getElementById('reportMonths').addEventListener('change',saveReportSettings);
+document.getElementById('reportMonths').addEventListener('change',()=>{saveReportSettings();refreshBdeChecklist();});
 
 if(sessionStorage.getItem('cn_auth')==='1'){
   document.getElementById('loginScreen').style.display='none';loadAll();
