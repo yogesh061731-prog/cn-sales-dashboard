@@ -63,13 +63,10 @@ function rowsToObjects(rows) {
   });
 }
 
-// ── Flexible header finder (handles multiline headers) ───────
 function findVal(r, ...keywords) {
-  // Try exact match first
   for (const kw of keywords) {
     if (r[kw] !== undefined) return r[kw];
   }
-  // Fallback: find key containing all words from any keyword phrase
   for (const kw of keywords) {
     const words = kw.split(" ").filter(Boolean);
     const found = Object.entries(r).find(([k]) => words.every(w => k.includes(w)));
@@ -78,7 +75,6 @@ function findVal(r, ...keywords) {
   return "";
 }
 
-// ── Fetch sheet tab ──────────────────────────────────────────
 async function loadSheetCsv(sheetName) {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
   const response = await fetch(url);
@@ -86,14 +82,11 @@ async function loadSheetCsv(sheetName) {
   return parseCsv(await response.text());
 }
 
-// ── Parse Rebuilt MOM ────────────────────────────────────────
 function parseMOM(rows) {
   return rowsToObjects(rows)
     .filter(r => r.month && r.manager && r.month.match(/^\d{4}-\d{2}$/))
     .map(r => ({
-      month: r.month,
-      monthLabel: monthLabel(r.month),
-      manager: r.manager,
+      month: r.month, monthLabel: monthLabel(r.month), manager: r.manager,
       totalEntries: parseNum(findVal(r, "total dump entries")),
       complete: parseNum(findVal(r, "complete/rfd")),
       achievement: parseNum(r["achievement count"] || Object.entries(r).find(([k])=>k.includes("achievement")&&k.includes("count"))?.[1] || "0"),
@@ -114,15 +107,12 @@ function parseMOM(rows) {
     }));
 }
 
-// ── Parse Rebuilt BDE Rankings ───────────────────────────────
 function parseBDE(rows) {
   return rowsToObjects(rows)
     .filter(r => r.month && r.manager && r["bde/counsellor"] && r.month.match(/^\d{4}-\d{2}$/))
     .map(r => ({
-      month: r.month,
-      manager: r.manager,
-      counsellor: r["bde/counsellor"],
-      counsellorKey: r["counsellor key"],
+      month: r.month, manager: r.manager,
+      counsellor: r["bde/counsellor"], counsellorKey: r["counsellor key"],
       totalEntries: parseNum(findVal(r, "total dump entries")),
       complete: parseNum(findVal(r, "complete/rfd")),
       orderCount: parseNum(findVal(r, "order count")),
@@ -139,7 +129,6 @@ function parseBDE(rows) {
     }));
 }
 
-// ── Main data loader ─────────────────────────────────────────
 async function dashboardData() {
   const MANAGERS = ["Azhaan", "Nazim", "Priyanka"];
   const [momRows, bdeRows, ...rawTabs] = await Promise.all([
@@ -147,7 +136,6 @@ async function dashboardData() {
     loadSheetCsv("Rebuilt BDE Rankings").then(parseBDE),
     ...MANAGERS.map(m => loadSheetCsv(m)),
   ]);
-
   const sales = [];
   MANAGERS.forEach((manager, idx) => {
     const rows = rawTabs[idx];
@@ -163,62 +151,55 @@ async function dashboardData() {
       if (c >= 1000) month = `${c}-${String(b).padStart(2,'0')}`;
       else if (a >= 1000) month = `${a}-${String(b).padStart(2,'0')}`;
       if (!month) continue;
-
-      const statusRaw = clean(row[6] || ""); // col G = Status
+      const statusRaw = clean(row[6] || "");
       const sn = statusRaw.toLowerCase().replace(/\s+/g,' ').trim();
       let bucket = "Other";
       if (["full payment recieved","full payment received","manual payment"].includes(sn)) bucket = "Complete/RFD";
       else if (sn === "refund requested") bucket = "Refund Requested";
       else if (sn === "down payment") bucket = "Down Payment";
       else if (sn === "loan in progress") bucket = "Loan In Progress";
-
-      // Total amount (col F = index 5)
       const ar = clean(row[5]||"").toLowerCase().replace(/,/g,'').replace(/\s+/g,'');
       const mul = ar.endsWith('k') ? 1000 : 1;
       const totalAmount = (parseFloat(ar.endsWith('k') ? ar.slice(0,-1) : ar) || 0) * mul;
-
-      // DP amount (col I = index 8)
       const dpRaw = clean(row[8]||"").toLowerCase().replace(/,/g,'').replace(/\s+/g,'');
       const dpMul = dpRaw.endsWith('k') ? 1000 : 1;
       const dpAmount = (parseFloat(dpRaw.endsWith('k') ? dpRaw.slice(0,-1) : dpRaw) || 0) * dpMul;
-
-      // Order count rules
       let orderCount = 0;
-      if (totalAmount < 100000) {
-        orderCount = 0.5;
-      } else if (bucket === "Down Payment") {
+      if (totalAmount < 100000) { orderCount = 0.5; }
+      else if (bucket === "Down Payment") {
         if (dpAmount === 5000) orderCount = 1;
         else if (dpAmount === 1000) orderCount = 0.8;
         else if (dpAmount === 2500) orderCount = 0.5;
         else orderCount = 0;
-      } else if (bucket === "Complete/RFD") {
-        orderCount = 1;
-      }
-
+      } else if (bucket === "Complete/RFD") { orderCount = 1; }
       const counsellor = clean(row[1] || "");
       const isAzhaanSelfSale = manager === "Azhaan" && counsellor.toLowerCase().trim() === "azhaan";
       const achievement = isAzhaanSelfSale ? 0 : orderCount;
-
-      sales.push({
-        date: dateRaw, month, manager, counsellor,
-        learner: clean(row[2]||""),
-        amount: totalAmount, dpAmount, bucket,
-        status: statusRaw, orderCount, achievement,
-      });
+      sales.push({ date: dateRaw, month, manager, counsellor, learner: clean(row[2]||""), amount: totalAmount, dpAmount, bucket, status: statusRaw, orderCount, achievement });
     }
+  });
+  // Recalculate completedAmount from raw sales (RFD rows only)
+  // This bypasses any sheet formula issues caused by column shifts
+  bdeRows.forEach(bde => {
+    const rfdSales = sales.filter(s =>
+      s.month === bde.month &&
+      s.bucket === 'Complete/RFD' &&
+      s.counsellor.toLowerCase().trim() === bde.counsellor.toLowerCase().trim()
+    );
+    bde.completedAmount = rfdSales.reduce((a, s) => a + s.amount, 0);
+  });
+
+  // Recalculate MOM completedAmount from BDE rows
+  momRows.forEach(mom => {
+    const bdeSub = bdeRows.filter(b => b.month === mom.month && b.manager === mom.manager);
+    mom.completedAmount = bdeSub.reduce((a, b) => a + b.completedAmount, 0);
   });
 
   const months = [...new Set(momRows.map(r => r.month))].sort();
   const latestMonth = months.at(-1);
-  return {
-    generatedAt: new Date().toISOString(),
-    dataSource: "Rebuilt MOM + Rebuilt BDE Rankings (live)",
-    latestMonth, latestMonthLabel: monthLabel(latestMonth),
-    months, momRows, bdeRows, sales,
-  };
+  return { generatedAt: new Date().toISOString(), dataSource: "Rebuilt MOM + Rebuilt BDE Rankings (live)", latestMonth, latestMonthLabel: monthLabel(latestMonth), months, momRows, bdeRows, sales };
 }
 
-// ── Send email via Resend ────────────────────────────────────
 async function sendEmail(subject, htmlBody) {
   if (!RESEND_API_KEY) { console.log("RESEND_API_KEY not set, skipping email"); return; }
   try {
@@ -230,33 +211,23 @@ async function sendEmail(subject, htmlBody) {
     const data = await res.json();
     if (!res.ok) throw new Error(JSON.stringify(data));
     console.log(`Email sent. ID: ${data.id}`);
-  } catch (err) {
-    console.error("Email send failed:", err.message);
-  }
+  } catch (err) { console.error("Email send failed:", err.message); }
 }
 
-// ── Send WhatsApp via Twilio ─────────────────────────────────
 async function sendWhatsApp(message) {
   if (!TWILIO_SID || !TWILIO_TOKEN) { console.log("Twilio credentials not set, skipping WhatsApp"); return; }
   const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`;
   const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString("base64");
   for (const to of WHATSAPP_TO) {
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Authorization": `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ From: TWILIO_FROM, To: to, Body: message }),
-      });
+      const res = await fetch(url, { method: "POST", headers: { "Authorization": `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ From: TWILIO_FROM, To: to, Body: message }) });
       const data = await res.json();
       if (!res.ok) throw new Error(JSON.stringify(data));
       console.log(`WhatsApp sent to ${to}. SID: ${data.sid}`);
-    } catch (err) {
-      console.error(`WhatsApp failed for ${to}:`, err.message);
-    }
+    } catch (err) { console.error(`WhatsApp failed for ${to}:`, err.message); }
   }
 }
 
-// ── Build email HTML ─────────────────────────────────────────
 function buildEmailHtml(data) {
   const latest = data.latestMonth;
   const mom = data.momRows.filter(r => r.month === latest);
@@ -280,62 +251,11 @@ function buildEmailHtml(data) {
     </tr>`;
   }).join("");
   const alertSection = refundAlerts.length > 0
-    ? `<div style="margin:24px 0;padding:16px 20px;background:#fff1f2;border-left:4px solid #b42318;border-radius:6px">
-        <div style="font-weight:700;color:#b42318;margin-bottom:8px">⚠️ Refund Rate Alert (above 15%)</div>
-        ${refundAlerts.map(r => `<div style="color:#b42318;font-size:14px;margin:4px 0">• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate</div>`).join("")}
-       </div>`
-    : `<div style="margin:24px 0;padding:16px 20px;background:#f0fdf4;border-left:4px solid #15803d;border-radius:6px">
-        <div style="color:#15803d;font-weight:600">✅ All refund rates within 15% threshold</div>
-       </div>`;
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head>
-<body style="margin:0;padding:0;background:#f5f7fb;font-family:Inter,Arial,sans-serif">
-<div style="max-width:600px;margin:0 auto;padding:24px 16px">
-  <div style="background:#101828;border-radius:12px 12px 0 0;padding:24px 28px">
-    <div style="display:flex;align-items:center;gap:12px">
-      <div style="width:40px;height:40px;background:#e53935;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px">CN</div>
-      <div>
-        <div style="color:#fff;font-size:18px;font-weight:700">Yogesh's Sales Desk</div>
-        <div style="color:#8090a8;font-size:12px">Daily Summary · ${dateStr}</div>
-      </div>
-    </div>
-  </div>
-  <div style="background:#fff;padding:24px 28px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#687386;margin-bottom:12px">Overall · ${monthLabel(latest)}</div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap">
-      <div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px">
-        <div style="font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Achievement</div>
-        <div style="font-size:28px;font-weight:700;color:${achColor};margin:6px 0 2px">${totalAch.toFixed(1)}</div>
-        <div style="font-size:12px;color:#687386">${totalPct}% of ${totalTgt} target</div>
-      </div>
-      <div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px">
-        <div style="font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Total Target</div>
-        <div style="font-size:28px;font-weight:700;color:#14213d;margin:6px 0 2px">${totalTgt}</div>
-        <div style="font-size:12px;color:#687386">${monthLabel(latest)}</div>
-      </div>
-    </div>
-  </div>
-  <div style="background:#fff;padding:0 28px 24px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#687386;padding:20px 0 12px">Manager Breakdown</div>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #edf1f6;border-radius:8px;overflow:hidden">
-      <thead><tr style="background:#f5f7fb">
-        <th style="padding:10px 14px;text-align:left;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Manager</th>
-        <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Ach / Target</th>
-        <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Ach %</th>
-        <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">MTD Deficit</th>
-        <th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Refund %</th>
-      </tr></thead>
-      <tbody>${managerRows}</tbody>
-    </table>
-  </div>
-  <div style="background:#fff;padding:0 28px 8px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">${alertSection}</div>
-  <div style="background:#f5f7fb;border:1px solid #dce3ed;border-top:none;border-radius:0 0 12px 12px;padding:16px 28px;text-align:center">
-    <div style="font-size:11px;color:#687386">Auto-generated by <strong>Yogesh's Sales Desk</strong> · <a href="https://cn-sales-dashboard-production.up.railway.app" style="color:#087f8c">Open Dashboard</a></div>
-  </div>
-</div>
-</body></html>`;
+    ? `<div style="margin:24px 0;padding:16px 20px;background:#fff1f2;border-left:4px solid #b42318;border-radius:6px"><div style="font-weight:700;color:#b42318;margin-bottom:8px">⚠️ Refund Rate Alert (above 15%)</div>${refundAlerts.map(r => `<div style="color:#b42318;font-size:14px;margin:4px 0">• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate</div>`).join("")}</div>`
+    : `<div style="margin:24px 0;padding:16px 20px;background:#f0fdf4;border-left:4px solid #15803d;border-radius:6px"><div style="color:#15803d;font-weight:600">✅ All refund rates within 15% threshold</div></div>`;
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head><body style="margin:0;padding:0;background:#f5f7fb;font-family:Inter,Arial,sans-serif"><div style="max-width:600px;margin:0 auto;padding:24px 16px"><div style="background:#101828;border-radius:12px 12px 0 0;padding:24px 28px"><div style="display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;background:#e53935;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px">CN</div><div><div style="color:#fff;font-size:18px;font-weight:700">Yogesh's Sales Desk</div><div style="color:#8090a8;font-size:12px">Daily Summary · ${dateStr}</div></div></div></div><div style="background:#fff;padding:24px 28px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#687386;margin-bottom:12px">Overall · ${monthLabel(latest)}</div><div style="display:flex;gap:16px;flex-wrap:wrap"><div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px"><div style="font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Achievement</div><div style="font-size:28px;font-weight:700;color:${achColor};margin:6px 0 2px">${totalAch.toFixed(1)}</div><div style="font-size:12px;color:#687386">${totalPct}% of ${totalTgt} target</div></div><div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px"><div style="font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Total Target</div><div style="font-size:28px;font-weight:700;color:#14213d;margin:6px 0 2px">${totalTgt}</div><div style="font-size:12px;color:#687386">${monthLabel(latest)}</div></div></div></div><div style="background:#fff;padding:0 28px 24px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#687386;padding:20px 0 12px">Manager Breakdown</div><table style="width:100%;border-collapse:collapse;border:1px solid #edf1f6;border-radius:8px;overflow:hidden"><thead><tr style="background:#f5f7fb"><th style="padding:10px 14px;text-align:left;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Manager</th><th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Ach / Target</th><th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Ach %</th><th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">MTD Deficit</th><th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Refund %</th></tr></thead><tbody>${managerRows}</tbody></table></div><div style="background:#fff;padding:0 28px 8px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">${alertSection}</div><div style="background:#f5f7fb;border:1px solid #dce3ed;border-top:none;border-radius:0 0 12px 12px;padding:16px 28px;text-align:center"><div style="font-size:11px;color:#687386">Auto-generated by <strong>Yogesh's Sales Desk</strong> · <a href="https://cn-sales-dashboard-production.up.railway.app" style="color:#087f8c">Open Dashboard</a></div></div></div></body></html>`;
 }
 
-// ── Build WhatsApp message ───────────────────────────────────
 function buildWhatsAppMessage(data) {
   const latest = data.latestMonth;
   const mom = data.momRows.filter(r => r.month === latest);
@@ -355,20 +275,9 @@ function buildWhatsAppMessage(data) {
   const alertLines = refundAlerts.length > 0
     ? `⚠️ *REFUND ALERTS*\n${refundAlerts.map(r => `• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate`).join("\n")}`
     : `✅ *All refund rates within 15%*`;
-  return `🎯 *Sales Desk — Daily Summary*\n📅 ${dateStr}\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `📊 *OVERALL* ${achEmoji}\n` +
-    `Achievement: *${totalAch.toFixed(1)} / ${totalTgt}* (${totalPct}%)\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `👥 *MANAGER BREAKDOWN*\n` +
-    `${managerLines}\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `${alertLines.trim()}\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `🔗 _Open Dashboard_\nhttps://cn-sales-dashboard-production.up.railway.app`;
+  return `🎯 *Sales Desk — Daily Summary*\n📅 ${dateStr}\n\n━━━━━━━━━━━━━━━━━━━━\n📊 *OVERALL* ${achEmoji}\nAchievement: *${totalAch.toFixed(1)} / ${totalTgt}* (${totalPct}%)\n\n━━━━━━━━━━━━━━━━━━━━\n👥 *MANAGER BREAKDOWN*\n${managerLines}\n\n━━━━━━━━━━━━━━━━━━━━\n${alertLines.trim()}\n\n━━━━━━━━━━━━━━━━━━━━\n🔗 _Open Dashboard_\nhttps://cn-sales-dashboard-production.up.railway.app`;
 }
 
-// ── Scheduler — 9:30 AM IST daily ───────────────────────────
 function scheduleDaily() {
   function msUntilNext930() {
     const now = new Date();
@@ -388,9 +297,7 @@ function scheduleDaily() {
         sendEmail(`Sales Desk · Daily Summary · ${dateStr}`, buildEmailHtml(data)),
         sendWhatsApp(buildWhatsAppMessage(data)),
       ]);
-    } catch (err) {
-      console.error("Daily summary failed:", err.message);
-    }
+    } catch (err) { console.error("Daily summary failed:", err.message); }
     setTimeout(sendDailySummary, msUntilNext930());
   }
   const ms = msUntilNext930();
@@ -398,7 +305,6 @@ function scheduleDaily() {
   setTimeout(sendDailySummary, ms);
 }
 
-// ── Static file server ───────────────────────────────────────
 function contentType(filePath) {
   if (filePath.endsWith(".html")) return "text/html; charset=utf-8";
   if (filePath.endsWith(".css")) return "text/css; charset=utf-8";
@@ -409,7 +315,6 @@ function contentType(filePath) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://localhost:${PORT}`);
-
     if (url.pathname === "/api/data") {
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.setHeader("Access-Control-Allow-Origin", "*");
@@ -435,7 +340,6 @@ const server = http.createServer(async (req, res) => {
       res.end("API route not found");
       return;
     }
-
     const filePath = path.join(PUBLIC_DIR, url.pathname === "/" ? "index.html" : url.pathname.slice(1));
     if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403); res.end("Forbidden"); return; }
     res.setHeader("Content-Type", contentType(filePath));
