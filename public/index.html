@@ -178,6 +178,7 @@ td.r,th.r{text-align:right}
       <a onclick="goTo('bdeSection')">🏆 BDE Leaderboard</a>
       <a onclick="goTo('qualitySection')">✅ Quality Split</a>
       <a onclick="goTo('trackerSection')">📅 Daily Tracker</a>
+      <a onclick="goTo('projectionSection')">🎯 WoW Projection</a>
       <a onclick="goTo('reportSection')">🛠 Custom Report</a>
       <a onclick="goTo('trendSection')">📈 Trend</a>
     </nav>
@@ -294,6 +295,19 @@ td.r,th.r{text-align:right}
         </div>
         <div style="position:relative;height:240px;margin-bottom:20px"><canvas id="trackerChart"></canvas></div>
         <div class="table-wrap" id="trackerTable"></div>
+      </div>
+
+      <!-- WoW Projection -->
+      <div class="panel" id="projectionSection" style="scroll-margin-top:20px">
+        <div class="panel-head">
+          <div><p class="eyebrow">Week on Week Projection</p><h2>80% Target Achievement Tracker</h2></div>
+          <div class="controls" style="gap:8px">
+            <div><label class="ctrl-label">Month</label>
+              <select id="projMonth" onchange="renderProjection()"></select>
+            </div>
+          </div>
+        </div>
+        <div id="projContent"></div>
       </div>
 
       <!-- Custom Report Builder -->
@@ -605,7 +619,250 @@ function initTracker(){
   renderTracker();
 }
 
-// ── Custom Report Builder ─────────────────────────────────────
+// ── WoW Projection ───────────────────────────────────────────
+const PROJ_TARGET_PCT = 0.80; // 80% of monthly target
+
+function getWorkingDaysInWeek(year, month, fromDay, toDay) {
+  let count = 0;
+  for (let d = fromDay; d <= toDay; d++) {
+    const dow = new Date(Date.UTC(year, month - 1, d)).getUTCDay();
+    if (dow !== 0) count++; // exclude Sundays
+  }
+  return count;
+}
+
+function getWeeksForMonth(monthKey) {
+  const [y, m] = monthKey.split('-').map(Number);
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const weeks = [];
+  for (let d = 1; d <= daysInMonth; d += 7) {
+    const from = d, to = Math.min(d + 6, daysInMonth);
+    const workingDays = getWorkingDaysInWeek(y, m, from, to);
+    weeks.push({ from, to, workingDays, label: `W${weeks.length + 1} (${String(from).padStart(2,'0')}–${String(to).padStart(2,'0')})` });
+  }
+  return weeks;
+}
+
+function getWeeklyActual(sales, monthKey, manager, from, to) {
+  // Sum achievement from raw sales for this week
+  const [y, m] = monthKey.split('-').map(Number);
+  return sales.filter(s => {
+    if (s.month !== monthKey) return false;
+    if (s.manager !== manager) return false;
+    // Parse day from date
+    const str = String(s.date || '').trim();
+    const sep = str.includes('/') ? '/' : '-';
+    const p = str.split(sep);
+    let day = 0;
+    if (p.length === 3) {
+      const a = Number(p[0]), c = Number(p[2]);
+      day = a >= 1000 ? Number(p[2]) : Number(p[0]);
+    }
+    return day >= from && day <= to;
+  }).reduce((a, s) => a + s.achievement, 0);
+}
+
+function isWeekComplete(monthKey, toDay) {
+  const [y, m] = monthKey.split('-').map(Number);
+  const today = new Date();
+  const todayUtc = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  const weekEnd = new Date(Date.UTC(y, m - 1, toDay));
+  return todayUtc > weekEnd;
+}
+
+function isWeekInProgress(monthKey, fromDay, toDay) {
+  const [y, m] = monthKey.split('-').map(Number);
+  const today = new Date();
+  const todayUtc = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  const weekStart = new Date(Date.UTC(y, m - 1, fromDay));
+  const weekEnd = new Date(Date.UTC(y, m - 1, toDay));
+  return todayUtc >= weekStart && todayUtc <= weekEnd;
+}
+
+let projCharts = {};
+
+function renderProjection() {
+  const monthKey = document.getElementById('projMonth').value;
+  if (!monthKey) return;
+
+  const weeks = getWeeksForMonth(monthKey);
+  const totalWorkingDays = weeks.reduce((a, w) => a + w.workingDays, 0);
+  const managers = ['Azhaan', 'Nazim', 'Priyanka'];
+
+  // Destroy old charts
+  Object.values(projCharts).forEach(c => c.destroy());
+  projCharts = {};
+
+  const html = managers.map(manager => {
+    const momRow = state.mom.find(r => r.month === monthKey && r.manager === manager);
+    if (!momRow) return '';
+
+    const monthlyTarget = momRow.target;
+    const goalTarget = monthlyTarget * PROJ_TARGET_PCT;
+
+    // Build week data with deficit carry-forward
+    let carryDeficit = 0;
+    const weekData = weeks.map((w, i) => {
+      // Base weekly target proportional to working days
+      const baseTarget = totalWorkingDays > 0 ? (goalTarget * w.workingDays / totalWorkingDays) : 0;
+      // Add carry-forward deficit from previous weeks
+      const weekTarget = baseTarget + carryDeficit;
+
+      const complete = isWeekComplete(monthKey, w.to);
+      const inProgress = isWeekInProgress(monthKey, w.from, w.to);
+      const actual = (complete || inProgress) ? getWeeklyActual(state.sales, monthKey, manager, w.from, w.to) : null;
+
+      let deficit = 0;
+      let status = 'upcoming';
+      if (complete) {
+        deficit = actual - weekTarget; // negative = behind
+        carryDeficit = deficit < 0 ? Math.abs(deficit) : 0; // carry forward if behind
+        status = actual >= weekTarget ? 'ahead' : 'behind';
+      } else if (inProgress) {
+        status = 'inprogress';
+        carryDeficit = 0;
+      } else {
+        carryDeficit = 0;
+      }
+
+      return { ...w, baseTarget, weekTarget, actual, deficit, status, complete, inProgress };
+    });
+
+    // Cumulative lines for chart
+    const labels = weekData.map(w => w.label);
+    const projCumulative = [];
+    const actualCumulative = [];
+    const originalTarget = [];
+    let cumActual = 0;
+    let cumProj = 0;
+
+    weekData.forEach(w => {
+      cumProj += w.weekTarget;
+      projCumulative.push(Number(cumProj.toFixed(2)));
+      originalTarget.push(Number((goalTarget * (projCumulative.indexOf(projCumulative.at(-1)) + 1) / weeks.length).toFixed(2)));
+      if (w.actual !== null) { cumActual += w.actual; actualCumulative.push(Number(cumActual.toFixed(2))); }
+      else actualCumulative.push(null);
+    });
+
+    const totalActual = weekData.reduce((a, w) => a + (w.actual || 0), 0);
+    const overallStatus = totalActual >= goalTarget ? 'good' : totalActual >= goalTarget * 0.75 ? 'warn' : 'bad';
+
+    // Table rows
+    const tableRows = weekData.map(w => {
+      const statusBadge = w.complete
+        ? `<span class="${w.status === 'ahead' ? 'good' : 'bad'}" style="font-weight:600">${w.status === 'ahead' ? '✅ Ahead' : '⚠️ Behind'}</span>`
+        : w.inProgress
+        ? `<span class="warn">🔄 In Progress</span>`
+        : `<span style="color:var(--muted)">⏳ Upcoming</span>`;
+
+      const deficitCell = w.complete
+        ? `<td class="r ${w.deficit >= 0 ? 'good' : 'bad'}">${w.deficit >= 0 ? '+' : ''}${w.deficit.toFixed(1)}</td>`
+        : `<td class="r" style="color:var(--muted)">—</td>`;
+
+      return `<tr>
+        <td><strong>${w.label}</strong></td>
+        <td class="r">${w.workingDays}</td>
+        <td class="r">${w.weekTarget.toFixed(1)}</td>
+        <td class="r">${w.actual !== null ? fmtAch(w.actual) : '—'}</td>
+        ${deficitCell}
+        <td>${statusBadge}</td>
+      </tr>`;
+    }).join('');
+
+    const chartId = `projChart_${manager}`;
+
+    return `
+      <div style="border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:${TL_COLORS[manager]};letter-spacing:.05em">${manager}</div>
+            <div style="font-size:18px;font-weight:700;margin-top:2px">
+              ${fmtAch(totalActual)} <span style="font-size:13px;color:var(--muted)">of ${goalTarget.toFixed(1)} goal (${monthlyTarget} target × 80%)</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div style="text-align:right">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700">Achievement</div>
+              <div style="font-size:18px;font-weight:700;color:${TL_COLORS[manager]}">${((totalActual/goalTarget)*100).toFixed(1)}%</div>
+            </div>
+          </div>
+        </div>
+        <div style="position:relative;height:200px;margin-bottom:16px"><canvas id="${chartId}"></canvas></div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>Week</th><th class="r">W. Days</th><th class="r">Week Goal</th>
+            <th class="r">Actual</th><th class="r">Variance</th><th>Status</th>
+          </tr></thead>
+          <tbody>${tableRows}</tbody>
+          <tr style="border-top:2px solid var(--line);background:var(--page)">
+            <td><strong>Total</strong></td>
+            <td class="r">${totalWorkingDays}</td>
+            <td class="r"><strong>${goalTarget.toFixed(1)}</strong></td>
+            <td class="r"><strong class="${overallStatus}">${fmtAch(totalActual)}</strong></td>
+            <td class="r"><strong class="${totalActual>=goalTarget?'good':'bad'}">${totalActual>=goalTarget?'+':''}${(totalActual-goalTarget).toFixed(1)}</strong></td>
+            <td><strong class="${overallStatus}">${totalActual>=goalTarget?'✅ On Track':'⚠️ Behind'}</strong></td>
+          </tr>
+        </table></div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('projContent').innerHTML = html;
+
+  // Render charts after DOM update
+  managers.forEach(manager => {
+    const momRow = state.mom.find(r => r.month === monthKey && r.manager === manager);
+    if (!momRow) return;
+    const weeks = getWeeksForMonth(monthKey);
+    const goalTarget = momRow.target * PROJ_TARGET_PCT;
+    const totalWorkingDays = weeks.reduce((a, w) => a + w.workingDays, 0);
+    let carry = 0, cumActual = 0, cumProj = 0;
+    const labels = [], projData = [], actualData = [], flatData = [];
+    weeks.forEach((w, i) => {
+      const base = totalWorkingDays > 0 ? goalTarget * w.workingDays / totalWorkingDays : 0;
+      const wt = base + carry;
+      const complete = isWeekComplete(monthKey, w.to);
+      const inProgress = isWeekInProgress(monthKey, w.from, w.to);
+      const actual = (complete || inProgress) ? getWeeklyActual(state.sales, monthKey, manager, w.from, w.to) : null;
+      cumProj += wt;
+      if (actual !== null) cumActual += actual;
+      if (complete) carry = actual < wt ? wt - actual : 0;
+      labels.push(w.label);
+      projData.push(Number(cumProj.toFixed(2)));
+      actualData.push(actual !== null ? Number(cumActual.toFixed(2)) : null);
+      flatData.push(Number((goalTarget * (i + 1) / weeks.length).toFixed(2)));
+    });
+
+    const chartId = `projChart_${manager}`;
+    const ctx = document.getElementById(chartId);
+    if (!ctx) return;
+    projCharts[manager] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Actual (cumulative)', data: actualData, borderColor: TL_COLORS[manager], backgroundColor: `${TL_COLORS[manager]}22`, borderWidth: 2.5, pointRadius: 5, tension: .3, fill: true },
+          { label: 'Required (with deficit)', data: projData, borderColor: '#b42318', backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 3], pointRadius: 4, tension: .3 },
+          { label: '80% Target (flat)', data: flatData, borderColor: '#687386', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [2, 2], pointRadius: 0, tension: .3 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 20 } } },
+        scales: {
+          x: { ticks: { font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' } }
+        }
+      }
+    });
+  });
+}
+
+function initProjection() {
+  const months = [...new Set(state.mom.map(r => r.month))].sort().reverse();
+  const sel = document.getElementById('projMonth');
+  sel.innerHTML = months.map(m => `<option value="${m}"${m === state.month ? ' selected' : ''}>${mlabel(m)}</option>`).join('');
+  renderProjection();
+}
 const REPORT_STORAGE_KEY='cn_report_settings';
 const METRIC_LABELS={entries:'Entries',complete:'RFD',achievement:'Achievement',target:'Target',refunds:'Refunds',refRate:'Refund %',achPct:'Ach %',amount:'Revenue (RFD)',down:'Down Payment'};
 
