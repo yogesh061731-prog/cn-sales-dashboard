@@ -666,8 +666,13 @@ function buildReport(){
   if(!months.length){document.getElementById('reportOutput').innerHTML='<div style="color:var(--muted);padding:20px">Please select at least one month.</div>';return;}
   if(!selectedBdes.length){document.getElementById('reportOutput').innerHTML='<div style="color:var(--muted);padding:20px">Please select at least one BDE.</div>';return;}
 
-  // Filter BDE data
-  const filtered=state.bde.filter(r=>months.includes(r.month)&&selectedBdes.some(b=>b.key===r.key));
+  // Filter BDE data — respect team assignment per month
+  const team=document.getElementById('reportTeam').value;
+  const filtered=state.bde.filter(r=>
+    months.includes(r.month) &&
+    selectedBdes.some(b=>b.key===r.key) &&
+    (team==='All' || r.manager===team) // only include months where BDE was in selected team
+  );
 
   // Summary totals across all months — only selected BDEs
   const totals={entries:0,complete:0,achievement:0,target:0,refunds:0,amount:0,down:0};
@@ -681,7 +686,7 @@ function buildReport(){
     totals.down+=r.down;
   });
   const totalRefRate=totals.entries?totals.refunds/totals.entries:0;
-  const activeBdeNames=[...new Set(filtered.filter(r=>r.entries>0).map(r=>r.counsellor))];
+  const activeBdeNames=[...new Set(filtered.filter(r=>r.entries>0&&(team==='All'||r.manager===team)).map(r=>r.counsellor))];
 
   // Summary KPI cards
   const kpiHtml=`
@@ -721,7 +726,12 @@ function buildReport(){
     const isActive=activeBdeNames.includes(bde.name);
     let cells='';
     months.forEach(m=>{
-      const row=filtered.find(r=>r.month===m&&r.key===bde.key);
+      // Only show data for months where BDE was in the selected team
+      const row=filtered.find(r=>
+        r.month===m &&
+        r.key===bde.key &&
+        (team==='All' || r.manager===team)
+      );
       const v={entries:row?.entries||0,complete:row?.complete||0,achievement:row?.achievement||0,target:row?.target||0,refunds:row?.refunds||0,refRate:row?.refRate||0,achPct:row?.achPct||0,amount:row?.amount||0,down:row?.down||0};
       if(row){grandTotals[m].entries+=v.entries;grandTotals[m].complete+=v.complete;grandTotals[m].achievement+=v.achievement;grandTotals[m].target+=v.target;grandTotals[m].refunds+=v.refunds;grandTotals[m].amount+=v.amount;grandTotals[m].down+=v.down;grandTotals[m].count++;}
       metrics.forEach(met=>{
