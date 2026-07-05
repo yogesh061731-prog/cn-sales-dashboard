@@ -179,15 +179,25 @@ async function dashboardData() {
     }
   });
   // Recalculate completedAmount from raw sales (RFD rows only)
-  // This bypasses any sheet formula issues caused by column shifts
-  bdeRows.forEach(bde => {
-    const rfdSales = sales.filter(s =>
-      s.month === bde.month &&
-      s.bucket === 'Complete/RFD' &&
-      s.counsellor.toLowerCase().trim() === bde.counsellor.toLowerCase().trim()
-    );
-    bde.completedAmount = rfdSales.reduce((a, s) => a + s.amount, 0);
-  });
+  try {
+    bdeRows.forEach(bde => {
+      const bdeKey = (bde.counsellorKey || '').toLowerCase().trim();
+      if (!bdeKey) return;
+      const rfdSales = sales.filter(s =>
+        s.month === bde.month &&
+        s.bucket === 'Complete/RFD' &&
+        s.counsellor.toLowerCase().replace(/[^a-z ]/g,'').trim().split(' ')[0] === bdeKey
+      );
+      bde.completedAmount = rfdSales.reduce((a, s) => a + s.amount, 0);
+    });
+    // Recalculate MOM completedAmount from BDE rows
+    momRows.forEach(mom => {
+      const bdeSub = bdeRows.filter(b => b.month === mom.month && b.manager === mom.manager);
+      mom.completedAmount = bdeSub.reduce((a, b) => a + b.completedAmount, 0);
+    });
+  } catch(e) {
+    console.error('completedAmount recalc failed:', e.message);
+  }
 
   // Recalculate MOM completedAmount from BDE rows
   momRows.forEach(mom => {
