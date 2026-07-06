@@ -2,20 +2,24 @@ import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
 const SHEET_ID = "1tXZjag4kJYqO2ZG5EXwKp559dkUiC3lgoSRiEs1yA-4";
-const PORT = Number(process.env.PORT || 4173// ── Email);
- config ─────────────────────────────────────────────
+const PORT = Number(process.env.PORT || 4173);
+
+// ── Email config ─────────────────────────────────────────────
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const EMAIL_FROM = "onboarding@resend.dev";
 const EMAIL_REPLY_TO = "yogesh.gautam01@codingninjas.com";
-const EMAIL_TO = ["yogesh061731@gmail.com"];
+const EMAIL_TO = ["yogesh061731@gmail.com"]; // temporary until domain verified
+
 // ── WhatsApp config ──────────────────────────────────────────
 const TWILIO_SID = process.env.TWILIO_SID || "";
 const TWILIO_TOKEN = process.env.TWILIO_TOKEN || "";
 const TWILIO_FROM = "whatsapp:+14155238886";
 const WHATSAPP_TO = ["whatsapp:+918178131435"];
+
 // ── CSV parser ───────────────────────────────────────────────
 function parseCsv(text) {
   const rows = [];
@@ -24,7 +28,7 @@ function parseCsv(text) {
     const ch = text[i], next = text[i + 1];
     if (quoted) {
       if (ch === '"' && next === '"') { cell += '"'; i++; }
-      else (ch === '"') if { quoted = false; }
+      else if (ch === '"') { quoted = false; }
       else { cell += ch; }
     } else if (ch === '"') { quoted = true; }
     else if (ch === ',') { row.push(cell); cell = ""; }
@@ -34,6 +38,7 @@ function parseCsv(text) {
   if (cell || row.length) { row.push(cell); rows.push(row); }
   return rows;
 }
+
 function clean(v) { return String(v ?? "").trim(); }
 function norm(v) { return clean(v).toLowerCase().replace(/[\s\n\r]+/g, " "); }
 function parseNum(v) { return parseFloat(clean(v).replace(/,/g, "")) || 0; }
@@ -45,7 +50,7 @@ function parsePct(v) {
 function monthLabel(k) {
   if (!k || !k.includes("-")) return k;
   const [y, mo] = k.split("-").map(Number);
-  return new Intl.DateTimeFormat("en", { month:"short", year:  "numeric", timeZone: "UTC" })
+  return new Intl.DateTimeFormat("en", { month: "short", year: "numeric", timeZone: "UTC" })
     .format(new Date(Date.UTC(y, mo - 1, 1)));
 }
 function rowsToObjects(rows) {
@@ -57,6 +62,7 @@ function rowsToObjects(rows) {
     return o;
   });
 }
+
 function findVal(r, ...keywords) {
   for (const kw of keywords) {
     if (r[kw] !== undefined) return r[kw];
@@ -68,12 +74,14 @@ function findVal(r, ...keywords) {
   }
   return "";
 }
+
 async function loadSheetCsv(sheetName) {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
   const response = await fetch(url);
-  if (!.ok) throw new Errorresponse(`HTTP ${response.status} for sheet "${sheetName}"`);
+  if (!response.ok) throw new Error(`HTTP ${response.status} for sheet "${sheetName}"`);
   return parseCsv(await response.text());
 }
+
 function parseMOM(rows) {
   return rowsToObjects(rows)
     .filter(r => r.month && r.manager && r.month.match(/^\d{4}-\d{2}$/))
@@ -81,13 +89,13 @@ function parseMOM(rows) {
       month: r.month, monthLabel: monthLabel(r.month), manager: r.manager,
       totalEntries: parseNum(findVal(r, "total dump entries")),
       complete: parseNum(findVal(r, "complete/rfd")),
-      achievement: parseNum(r["achievement count"] || Object.entries(r).find(([k]) => k.includes("achievement") && k.includes("count"))?.[1] || "0"),
+      achievement: parseNum(r["achievement count"] || Object.entries(r).find(([k])=>k.includes("achievement")&&k.includes("count"))?.[1] || "0"),
       refunds: parseNum(findVal(r, "refunds")),
       downPayment: parseNum(findVal(r, "down payment")),
       loanInProgress: parseNum(findVal(r, "loan in progress")),
       completedAmount: parseNum(findVal(r, "completed amount")),
       target: parseNum(findVal(r, "target")),
-      achievementPct: parsePct(findVal(r "achievement %,")),
+      achievementPct: parsePct(findVal(r, "achievement %")),
       refundRate: parsePct(findVal(r, "refund rate")),
       activeBdes: parseNum(findVal(r, "active bdes")),
       productivity: parseNum(findVal(r, "productivity/bde")),
@@ -98,6 +106,7 @@ function parseMOM(rows) {
       requiredDrr: parseNum(findVal(r, "required drr")),
     }));
 }
+
 function parseBDE(rows) {
   return rowsToObjects(rows)
     .filter(r => r.month && r.manager && r["bde/counsellor"] && r.month.match(/^\d{4}-\d{2}$/))
@@ -105,9 +114,9 @@ function parseBDE(rows) {
       month: r.month, manager: r.manager,
       counsellor: r["bde/counsellor"], counsellorKey: r["counsellor key"],
       totalEntries: parseNum(findVal(r, "total dump entries")),
-      complete: parseNum(findVal(r, "complete/r")),
-      orderCountfd: parseNum(findVal(r, "order count")),
-      achievement: parseNum(r["achievement count"] || Object.entries(r).find(([k]) => k.includes("achievement") && k.includes("count"))?.[1] || "0"),
+      complete: parseNum(findVal(r, "complete/rfd")),
+      orderCount: parseNum(findVal(r, "order count")),
+      achievement: parseNum(r["achievement count"] || Object.entries(r).find(([k])=>k.includes("achievement")&&k.includes("count"))?.[1] || "0"),
       refunds: parseNum(findVal(r, "refunds")),
       downPayment: parseNum(findVal(r, "down payment")),
       loanInProgress: parseNum(findVal(r, "loan in progress")),
@@ -119,11 +128,12 @@ function parseBDE(rows) {
       status: findVal(r, "status flag", "status"),
     }));
 }
+
 async function dashboardData() {
   const MANAGERS = ["Azhaan", "Nazim", "Priyanka"];
   const [momRows, bdeRows, ...rawTabs] = await Promise.all([
     loadSheetCsv("Rebuilt MOM").then(parseMOM),
-    loadSheetC("Rebuilt BDEsv Rankings").then(parseBDE),
+    loadSheetCsv("Rebuilt BDE Rankings").then(parseBDE),
     ...MANAGERS.map(m => loadSheetCsv(m)),
   ]);
   const sales = [];
@@ -144,7 +154,7 @@ async function dashboardData() {
       const statusRaw = clean(row[6] || "");
       const sn = statusRaw.toLowerCase().replace(/\s+/g,' ').trim();
       let bucket = "Other";
-      if ("full payment rec[ieved","full payment received","manual payment"].includes(sn)) bucket = "Complete/RFD";
+      if (["full payment recieved","full payment received","manual payment"].includes(sn)) bucket = "Complete/RFD";
       else if (sn === "refund requested") bucket = "Refund Requested";
       else if (sn === "down payment") bucket = "Down Payment";
       else if (sn === "loan in progress") bucket = "Loan In Progress";
@@ -156,7 +166,7 @@ async function dashboardData() {
       const dpAmount = (parseFloat(dpRaw.endsWith('k') ? dpRaw.slice(0,-1) : dpRaw) || 0) * dpMul;
       let orderCount = 0;
       if (totalAmount < 100000) { orderCount = 0.5; }
-      else if ( === "Downbucket Payment") {
+      else if (bucket === "Down Payment") {
         if (dpAmount === 5000) orderCount = 1;
         else if (dpAmount === 1000) orderCount = 0.8;
         else if (dpAmount === 2500) orderCount = 0.5;
@@ -173,13 +183,14 @@ async function dashboardData() {
     bdeRows.forEach(bde => {
       const bdeKey = (bde.counsellorKey || '').toLowerCase().trim();
       if (!bdeKey) return;
-      const rSales = sales.filterfd(s =>
+      const rfdSales = sales.filter(s =>
         s.month === bde.month &&
         s.bucket === 'Complete/RFD' &&
         s.counsellor.toLowerCase().replace(/[^a-z ]/g,'').trim().split(' ')[0] === bdeKey
       );
       bde.completedAmount = rfdSales.reduce((a, s) => a + s.amount, 0);
     });
+    // Recalculate MOM completedAmount from BDE rows
     momRows.forEach(mom => {
       const bdeSub = bdeRows.filter(b => b.month === mom.month && b.manager === mom.manager);
       mom.completedAmount = bdeSub.reduce((a, b) => a + b.completedAmount, 0);
@@ -187,11 +198,19 @@ async function dashboardData() {
   } catch(e) {
     console.error('completedAmount recalc failed:', e.message);
   }
+
+  // Recalculate MOM completedAmount from BDE rows
+  momRows.forEach(mom => {
+    const bdeSub = bdeRows.filter(b => b.month === mom.month && b.manager === mom.manager);
+    mom.completedAmount = bdeSub.reduce((a, b) => a + b.completedAmount, 0);
+  });
+
   const months = [...new Set(momRows.map(r => r.month))].sort();
   const latestMonth = months.at(-1);
   return { generatedAt: new Date().toISOString(), dataSource: "Rebuilt MOM + Rebuilt BDE Rankings (live)", latestMonth, latestMonthLabel: monthLabel(latestMonth), months, momRows, bdeRows, sales };
 }
-async function sendEmail(sub, htmljectBody) {
+
+async function sendEmail(subject, htmlBody) {
   if (!RESEND_API_KEY) { console.log("RESEND_API_KEY not set, skipping email"); return; }
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -204,31 +223,29 @@ async function sendEmail(sub, htmljectBody) {
     console.log(`Email sent. ID: ${data.id}`);
   } catch (err) { console.error("Email send failed:", err.message); }
 }
+
 async function sendWhatsApp(message) {
   if (!TWILIO_SID || !TWILIO_TOKEN) { console.log("Twilio credentials not set, skipping WhatsApp"); return; }
   const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`;
   const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString("base64");
-  (const to of WHAT forSAPP_TO) {
+  for (const to of WHATSAPP_TO) {
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Authorization": `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ From: TWILIO_FROM, To: to, Body: message }),
-      });
+      const res = await fetch(url, { method: "POST", headers: { "Authorization": `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ From: TWILIO_FROM, To: to, Body: message }) });
       const data = await res.json();
       if (!res.ok) throw new Error(JSON.stringify(data));
       console.log(`WhatsApp sent to ${to}. SID: ${data.sid}`);
     } catch (err) { console.error(`WhatsApp failed for ${to}:`, err.message); }
   }
 }
+
 function buildEmailHtml(data) {
   const latest = data.latestMonth;
   const mom = data.momRows.filter(r => r.month === latest);
   const totalAch = mom.reduce((a, r) => a + r.achievement, 0);
   const totalTgt = mom.reduce((a, r) => a + r.target, 0);
   const totalPct = totalTgt ? ((totalAch / totalTgt) * 100).toFixed(1) : "0.0";
-  const refundAlerts = mom.filter(r => r.refundRate > 0.);
-  const now =15 new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const refundAlerts = mom.filter(r => r.refundRate > 0.15);
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const achColor = totalAch / totalTgt >= 0.8 ? "#15803d" : totalAch / totalTgt >= 0.5 ? "#b7791f" : "#b42318";
   const managerRows = [...mom].sort((a, b) => b.achievementPct - a.achievementPct).map(r => {
@@ -236,7 +253,7 @@ function buildEmailHtml(data) {
     const color = r.achievementPct >= 0.8 ? "#15803d" : r.achievementPct >= 0.5 ? "#b7791f" : "#b42318";
     const deficitColor = r.mtdDeficit > 0 ? "#b42318" : "#15803d";
     return `<tr>
-      <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;-weight:600">${fontr.manager}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;font-weight:600">${r.manager}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;text-align:center">${r.achievement} / ${r.target}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;text-align:center;color:${color};font-weight:700">${pctVal}%</td>
       <td style="padding:10px 14px;border-bottom:1px solid #edf1f6;text-align:center;color:${deficitColor};font-weight:600">${r.mtdDeficit.toFixed(1)}</td>
@@ -244,18 +261,11 @@ function buildEmailHtml(data) {
     </tr>`;
   }).join("");
   const alertSection = refundAlerts.length > 0
-    ? `<div style"margin:24px =0;padding:16px 20px;background:#fff1f2;border-left:4px solid #b42318;border-radius:6px">
-        <div style="font-weight:700;color:#b42318;margin-bottom:8px">⚠️ Refund Rate Alert (above 15%)</div>
-        ${refundAlerts.map(r => `<div style="color:#b42318;font-size:14px;margin:4px 0">• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate</div>`).join("")}
-       </div>`
-    : `<div style="margin:24px 0;padding:16px 20px;background:#f0fdf4;border-left:4px solid #15803d;border-radius:6px">
-        <div style="color:#15803d;font-weight:600">✅ All refund rates within 15% threshold</div>
-       </div>`;
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head><body style="margin:0;padding:0;background:#f5f7fb;font-family:Inter,Arial,sans-serif">
-    <div style"max-width:600px=;margin:0 auto;padding:24px 16px">
-      ... [email HTML body - same as current server.mjs, includes header, KPIs, manager table, alerts, footer] ...
-    </div></body></html>`;
+    ? `<div style="margin:24px 0;padding:16px 20px;background:#fff1f2;border-left:4px solid #b42318;border-radius:6px"><div style="font-weight:700;color:#b42318;margin-bottom:8px">⚠️ Refund Rate Alert (above 15%)</div>${refundAlerts.map(r => `<div style="color:#b42318;font-size:14px;margin:4px 0">• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate</div>`).join("")}</div>`
+    : `<div style="margin:24px 0;padding:16px 20px;background:#f0fdf4;border-left:4px solid #15803d;border-radius:6px"><div style="color:#15803d;font-weight:600">✅ All refund rates within 15% threshold</div></div>`;
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head><body style="margin:0;padding:0;background:#f5f7fb;font-family:Inter,Arial,sans-serif"><div style="max-width:600px;margin:0 auto;padding:24px 16px"><div style="background:#101828;border-radius:12px 12px 0 0;padding:24px 28px"><div style="display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;background:#e53935;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px">CN</div><div><div style="color:#fff;font-size:18px;font-weight:700">Yogesh's Sales Desk</div><div style="color:#8090a8;font-size:12px">Daily Summary · ${dateStr}</div></div></div></div><div style="background:#fff;padding:24px 28px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#687386;margin-bottom:12px">Overall · ${monthLabel(latest)}</div><div style="display:flex;gap:16px;flex-wrap:wrap"><div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px"><div style="font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Achievement</div><div style="font-size:28px;font-weight:700;color:${achColor};margin:6px 0 2px">${totalAch.toFixed(1)}</div><div style="font-size:12px;color:#687386">${totalPct}% of ${totalTgt} target</div></div><div style="flex:1;min-width:120px;background:#f5f7fb;border-radius:8px;padding:14px 16px"><div style="font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Total Target</div><div style="font-size:28px;font-weight:700;color:#14213d;margin:6px 0 2px">${totalTgt}</div><div style="font-size:12px;color:#687386">${monthLabel(latest)}</div></div></div></div><div style="background:#fff;padding:0 28px 24px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#687386;padding:20px 0 12px">Manager Breakdown</div><table style="width:100%;border-collapse:collapse;border:1px solid #edf1f6;border-radius:8px;overflow:hidden"><thead><tr style="background:#f5f7fb"><th style="padding:10px 14px;text-align:left;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Manager</th><th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Ach / Target</th><th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Ach %</th><th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">MTD Deficit</th><th style="padding:10px 14px;text-align:center;font-size:11px;color:#687386;font-weight:700;text-transform:uppercase">Refund %</th></tr></thead><tbody>${managerRows}</tbody></table></div><div style="background:#fff;padding:0 28px 8px;border-left:1px solid #dce3ed;border-right:1px solid #dce3ed">${alertSection}</div><div style="background:#f5f7fb;border:1px solid #dce3ed;border-top:none;border-radius:0 0 12px 12px;padding:16px 28px;text-align:center"><div style="font-size:11px;color:#687386">Auto-generated by <strong>Yogesh's Sales Desk</strong> · <a href="https://cn-sales-dashboard-production.up.railway.app" style="color:#087f8c">Open Dashboard</a></div></div></div></body></html>`;
 }
+
 function buildWhatsAppMessage(data) {
   const latest = data.latestMonth;
   const mom = data.momRows.filter(r => r.month === latest);
@@ -263,7 +273,7 @@ function buildWhatsAppMessage(data) {
   const totalTgt = mom.reduce((a, r) => a + r.target, 0);
   const totalPct = totalTgt ? ((totalAch / totalTgt) * 100).toFixed(1) : "0.0";
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month:"short", year:  "numeric" });
+  const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
   const achEmoji = totalAch / totalTgt >= 0.8 ? "🟢" : totalAch / totalTgt >= 0.5 ? "🟡" : "🔴";
   const managerLines = [...mom].sort((a, b) => b.achievementPct - a.achievementPct).map(r => {
     const pct = (r.achievementPct * 100).toFixed(1);
@@ -272,13 +282,14 @@ function buildWhatsAppMessage(data) {
     return `${emoji} *${r.manager}* → ${r.achievement.toFixed(1)}/${r.target} (${pct}%)${deficit}`;
   }).join("\n");
   const refundAlerts = mom.filter(r => r.refundRate > 0.15);
-  const alertLines = refundAlerts.length >0
-    ? ` ⚠️ *REFUND ALERTS*\n${refundAlerts.map(r => `• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate`).join("\n")}`
+  const alertLines = refundAlerts.length > 0
+    ? `⚠️ *REFUND ALERTS*\n${refundAlerts.map(r => `• ${r.manager}: ${(r.refundRate * 100).toFixed(1)}% refund rate`).join("\n")}`
     : `✅ *All refund rates within 15%*`;
-  return `🎯 *Sales Desk — Daily Summary*\n📅 ${dateStr}\n\n━━━━━━━━━━━━━━━━━━━━\n📊 *OVERALL* ${achEmoji}\nAchievement: *${totalAch.toFixed(1)} / ${totalTgt}* (${totalPct}%)\n\n👥 *MANAGER BREAKDOWN*\n${managerLines}\n\n━━━━━━━━━━━━━━━━━━━━\n${alertLines.trim()}\n\n━━━━━━━━━━━━━━━━━━━━\n🔗 _Open Dashboard_\nhttps://cn-sales-dashboard-production.up.railway.app`;
+  return `🎯 *Sales Desk — Daily Summary*\n📅 ${dateStr}\n\n━━━━━━━━━━━━━━━━━━━━\n📊 *OVERALL* ${achEmoji}\nAchievement: *${totalAch.toFixed(1)} / ${totalTgt}* (${totalPct}%)\n\n━━━━━━━━━━━━━━━━━━━━\n👥 *MANAGER BREAKDOWN*\n${managerLines}\n\n━━━━━━━━━━━━━━━━━━━━\n${alertLines.trim()}\n\n━━━━━━━━━━━━━━━━━━━━\n🔗 _Open Dashboard_\nhttps://cn-sales-dashboard-production.up.railway.app`;
 }
-function scheduleDaily()  function msUntil {
-Next930() {
+
+function scheduleDaily() {
+  function msUntilNext930() {
     const now = new Date();
     const ist = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
     const next = new Date(ist);
@@ -300,15 +311,17 @@ Next930() {
     setTimeout(sendDailySummary, msUntilNext930());
   }
   const ms = msUntilNext930();
-  console.log(`Daily summary scheduled — next send in ${Math.floor(ms/3600000h ${Math.floor(()}ms%3600000)/60000)}m`);
+  console.log(`Daily summary scheduled — next send in ${Math.floor(ms/3600000)}h ${Math.floor((ms%3600000)/60000)}m`);
   setTimeout(sendDailySummary, ms);
 }
+
 function contentType(filePath) {
   if (filePath.endsWith(".html")) return "text/html; charset=utf-8";
   if (filePath.endsWith(".css")) return "text/css; charset=utf-8";
   if (filePath.endsWith(".js")) return "application/javascript; charset=utf-8";
   return "application/octet-stream";
 }
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -325,7 +338,7 @@ const server = http.createServer(async (req, res) => {
       res.end("Test email sent! Check your inbox.");
       return;
     }
-    if (url.path === "/api/test-wnamehatsapp") {
+    if (url.pathname === "/api/test-whatsapp") {
       const data = await dashboardData();
       await sendWhatsApp(buildWhatsAppMessage(data));
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -346,6 +359,7 @@ const server = http.createServer(async (req, res) => {
     res.end(err.stack || String(err));
   }
 });
+
 server.listen(PORT, () => {
   console.log(`Sales dashboard running at http://localhost:${PORT}`);
   scheduleDaily();
