@@ -621,7 +621,7 @@ function initTracker(){
 }
 
 // ── WoW Projection ───────────────────────────────────────────
-const PROJ_TARGET_PCT = 0.80; // 80% of monthly target
+const PROJ_TARGET_PCT = { 'Azhaan': 0.70, 'Nazim': 1.00, 'Priyanka': 1.00 };
 
 function getWorkingDaysInWeek(year, month, fromDay, toDay) {
   let count = 0;
@@ -699,7 +699,7 @@ function renderProjection() {
     if (!momRow) return '';
 
     const monthlyTarget = momRow.target;
-    const goalTarget = monthlyTarget * PROJ_TARGET_PCT;
+    const goalTarget = monthlyTarget * PROJ_TARGET_PCT[manager];
 
     // Build week data with deficit carry-forward
     let carryDeficit = 0;
@@ -778,7 +778,7 @@ function renderProjection() {
           <div>
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:${TL_COLORS[manager]};letter-spacing:.05em">${manager}</div>
             <div style="font-size:18px;font-weight:700;margin-top:2px">
-              ${fmtAch(totalActual)} <span style="font-size:13px;color:var(--muted)">of ${goalTarget.toFixed(1)} goal (${monthlyTarget} target × 80%)</span>
+              ${fmtAch(totalActual)} <span style="font-size:13px;color:var(--muted)">of ${goalTarget.toFixed(1)} goal (${monthlyTarget} target × ${Math.round(PROJ_TARGET_PCT[manager]*100)}%)</span>
             </div>
           </div>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
@@ -814,7 +814,7 @@ function renderProjection() {
     const momRow = state.mom.find(r => r.month === monthKey && r.manager === manager);
     if (!momRow) return;
     const weeks = getWeeksForMonth(monthKey);
-    const goalTarget = momRow.target * PROJ_TARGET_PCT;
+    const goalTarget = momRow.target * PROJ_TARGET_PCT[manager];
     const totalWorkingDays = weeks.reduce((a, w) => a + w.workingDays, 0);
     let carry = 0, cumActual = 0, cumProj = 0;
     const labels = [], projData = [], actualData = [], flatData = [];
@@ -842,8 +842,7 @@ function renderProjection() {
         labels,
         datasets: [
           { label: 'Actual (cumulative)', data: actualData, borderColor: TL_COLORS[manager], backgroundColor: `${TL_COLORS[manager]}22`, borderWidth: 2.5, pointRadius: 5, tension: .3, fill: true },
-          { label: 'Required (with deficit)', data: projData, borderColor: '#b42318', backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 3], pointRadius: 4, tension: .3 },
-          { label: '80% Target (flat)', data: flatData, borderColor: '#687386', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [2, 2], pointRadius: 0, tension: .3 },
+          { label: `${Math.round(PROJ_TARGET_PCT[manager]*100)}% Target (flat)`, data: flatData, borderColor: '#687386', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [2, 2], pointRadius: 0, tension: .3 },
         ]
       },
       options: {
