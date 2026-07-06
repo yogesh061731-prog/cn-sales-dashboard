@@ -645,8 +645,8 @@ function getWeeksForMonth(monthKey) {
 }
 
 function getWeeklyActual(sales, monthKey, manager, from, to) {
-  // Sum achievement (order count) from raw sales for this week
-  return sales.filter(s => {
+  // Count entries in this week
+  const weekEntries = sales.filter(s => {
     if (s.month !== monthKey) return false;
     if (manager && s.manager !== manager) return false;
     const str = String(s.date || '').trim();
@@ -658,9 +658,23 @@ function getWeeklyActual(sales, monthKey, manager, from, to) {
       day = a >= 1000 ? Number(p[2]) : Number(p[0]);
     }
     return day >= from && day <= to;
-  }).reduce((a, s) => a + (s.achievement || 0), 0);
-}
+  }).length;
 
+  // Get total entries for the manager in this month
+  const totalMonthEntries = sales.filter(s => {
+    if (s.month !== monthKey) return false;
+    if (manager && s.manager !== manager) return false;
+    return true;
+  }).length;
+
+  // Get MOM achievement for this manager
+  const momRow = state.mom.find(r => r.month === monthKey && (!manager || r.manager === manager));
+  const totalAchievement = momRow ? momRow.achievement : 0;
+
+  // Distribute proportionally
+  if (!totalMonthEntries || !totalAchievement) return 0;
+  return (weekEntries / totalMonthEntries) * totalAchievement;
+}
 function isWeekComplete(monthKey, toDay) {
   const [y, m] = monthKey.split('-').map(Number);
   const today = new Date();
@@ -882,7 +896,18 @@ function renderProjection() {
   }).join('');
 
   document.getElementById('projContent').innerHTML = html;
-
+// Create Overall chart
+projCharts['Overall'] = new Chart(document.getElementById('projChart_Overall'), {
+  type: 'line',
+  data: {
+    labels: weeks.map(w => w.label),
+    datasets: [
+      { label: 'Actual (cumulative)', data: oActualData, borderColor: '#14213d', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 4, tension: 0.3 },
+      { label: 'Target (flat)', data: oFlatData, borderColor: '#687386', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0, tension: 0.3 },
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 20 } } }, scales: { x: { ticks: { font: { size: 10 } }, grid: { display: false } }, y: { ticks: { font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' } } } }
+});
   // Render charts after DOM update
   managers.forEach(manager => {
     const momRow = state.mom.find(r => r.month === monthKey && r.manager === manager);
