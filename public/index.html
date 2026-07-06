@@ -660,16 +660,18 @@ function getWeeklyActual(sales, monthKey, manager, from, to) {
     return day >= from && day <= to;
   }).length;
 
-  // Get total entries for the manager in this month
+  // Total entries for this manager (or ALL managers for Overall)
   const totalMonthEntries = sales.filter(s => {
     if (s.month !== monthKey) return false;
     if (manager && s.manager !== manager) return false;
     return true;
   }).length;
 
-  // Get MOM achievement for this manager
-  const momRow = state.mom.find(r => r.month === monthKey && (!manager || r.manager === manager));
-  const totalAchievement = momRow ? momRow.achievement : 0;
+  // Get MOM achievement — sum ALL managers for Overall (null)
+  const momRows = manager
+    ? state.mom.filter(r => r.month === monthKey && r.manager === manager)
+    : state.mom.filter(r => r.month === monthKey);
+  const totalAchievement = momRows.reduce((a, r) => a + r.achievement, 0);
 
   // Distribute proportionally
   if (!totalMonthEntries || !totalAchievement) return 0;
