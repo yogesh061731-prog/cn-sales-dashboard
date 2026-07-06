@@ -645,12 +645,10 @@ function getWeeksForMonth(monthKey) {
 }
 
 function getWeeklyActual(sales, monthKey, manager, from, to) {
-  // Sum achievement from raw sales for this week
-  const [y, m] = monthKey.split('-').map(Number);
+  // Sum achievement (order count) from raw sales for this week
   return sales.filter(s => {
     if (s.month !== monthKey) return false;
-    if (s.manager !== manager) return false;
-    // Parse day from date
+    if (manager && s.manager !== manager) return false;
     const str = String(s.date || '').trim();
     const sep = str.includes('/') ? '/' : '-';
     const p = str.split(sep);
@@ -660,7 +658,7 @@ function getWeeklyActual(sales, monthKey, manager, from, to) {
       day = a >= 1000 ? Number(p[2]) : Number(p[0]);
     }
     return day >= from && day <= to;
-  }).reduce((a, s) => a + s.achievement, 0);
+  }).reduce((a, s) => a + (s.achievement || 0), 0);
 }
 
 function isWeekComplete(monthKey, toDay) {
@@ -694,7 +692,83 @@ function renderProjection() {
   Object.values(projCharts).forEach(c => c.destroy());
   projCharts = {};
 
-  const html = managers.map(manager => {
+  const OVERALL_TARGET_PCT = 0.70;
+  const allManagers = ['Azhaan', 'Nazim', 'Priyanka'];
+
+  // ── Overall section ──────────────────────────────────────
+  const overallMomRows = allManagers.map(m => state.mom.find(r => r.month === monthKey && r.manager === m)).filter(Boolean);
+  const overallMonthlyTarget = overallMomRows.reduce((a, r) => a + r.target, 0);
+  const overallGoalTarget = overallMonthlyTarget * OVERALL_TARGET_PCT;
+
+  let overallCarry = 0;
+  const overallWeekData = weeks.map((w) => {
+    const baseTarget = totalWorkingDays > 0 ? (overallGoalTarget * w.workingDays / totalWorkingDays) : 0;
+    const weekTarget = baseTarget + overallCarry;
+    const complete = isWeekComplete(monthKey, w.to);
+    const inProgress = isWeekInProgress(monthKey, w.from, w.to);
+    const actual = (complete || inProgress) ? getWeeklyActual(state.sales, monthKey, null, w.from, w.to) : null;
+    let deficit = 0, status = 'upcoming';
+    if (complete) {
+      deficit = actual - weekTarget;
+      overallCarry = deficit < 0 ? Math.abs(deficit) : 0;
+      status = actual >= weekTarget ? 'ahead' : 'behind';
+    } else if (inProgress) { status = 'inprogress'; overallCarry = 0; }
+    else { overallCarry = 0; }
+    return { ...w, weekTarget, actual, deficit, status, complete, inProgress };
+  });
+
+  const overallTotalActual = overallWeekData.reduce((a, w) => a + (w.actual || 0), 0);
+  const overallStatus = overallTotalActual >= overallGoalTarget ? 'good' : overallTotalActual >= overallGoalTarget * 0.75 ? 'warn' : 'bad';
+
+  const overallTableRows = overallWeekData.map(w => {
+    const statusBadge = w.complete
+      ? `<span class="${w.status === 'ahead' ? 'good' : 'bad'}" style="font-weight:600">${w.status === 'ahead' ? '✅ Ahead' : '⚠️ Behind'}</span>`
+      : w.inProgress ? `<span class="warn">🔄 In Progress</span>` : `<span style="color:var(--muted)">⏳ Upcoming</span>`;
+    const deficitCell = w.complete
+      ? `<td class="r ${w.deficit >= 0 ? 'good' : 'bad'}">${w.deficit >= 0 ? '+' : ''}${w.deficit.toFixed(1)}</td>`
+      : `<td class="r" style="color:var(--muted)">—</td>`;
+    return `<tr><td><strong>${w.label}</strong></td><td class="r">${w.workingDays}</td><td class="r">${w.weekTarget.toFixed(1)}</td><td class="r">${w.actual !== null ? fmtAch(w.actual) : '—'}</td>${deficitCell}<td>${statusBadge}</td></tr>`;
+  }).join('');
+
+  // Overall chart data
+  let oCumActual = 0, oCumFlat = 0;
+  const oActualData = [], oFlatData = [];
+  overallWeekData.forEach((w, i) => {
+    oCumFlat += overallGoalTarget / weeks.length;
+    if (w.actual !== null) oCumActual += w.actual;
+    oActualData.push(w.actual !== null ? Number(oCumActual.toFixed(2)) : null);
+    oFlatData.push(Number(oCumFlat.toFixed(2)));
+  });
+
+  const overallHtml = `
+    <div style="border:2px solid var(--ink);border-radius:10px;padding:16px;margin-bottom:16px;background:var(--page)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink);letter-spacing:.05em">📊 Overall (Yogesh)</div>
+          <div style="font-size:18px;font-weight:700;margin-top:2px">
+            ${fmtAch(overallTotalActual)} <span style="font-size:13px;color:var(--muted)">of ${overallGoalTarget.toFixed(1)} goal (${overallMonthlyTarget} target × 70%)</span>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700">Achievement</div>
+          <div style="font-size:18px;font-weight:700;color:var(--ink)">${((overallTotalActual/overallGoalTarget)*100).toFixed(1)}%</div>
+        </div>
+      </div>
+      <div style="position:relative;height:200px;margin-bottom:16px"><canvas id="projChart_Overall"></canvas></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Week</th><th class="r">W. Days</th><th class="r">Week Goal</th><th class="r">Actual</th><th class="r">Variance</th><th>Status</th></tr></thead>
+        <tbody>${overallTableRows}</tbody>
+        <tr style="border-top:2px solid var(--line);background:var(--panel)">
+          <td><strong>Total</strong></td><td class="r">${totalWorkingDays}</td>
+          <td class="r"><strong>${overallGoalTarget.toFixed(1)}</strong></td>
+          <td class="r"><strong class="${overallStatus}">${fmtAch(overallTotalActual)}</strong></td>
+          <td class="r"><strong class="${overallTotalActual>=overallGoalTarget?'good':'bad'}">${overallTotalActual>=overallGoalTarget?'+':''}${(overallTotalActual-overallGoalTarget).toFixed(1)}</strong></td>
+          <td><strong class="${overallStatus}">${overallTotalActual>=overallGoalTarget?'✅ On Track':'⚠️ Behind'}</strong></td>
+        </tr>
+      </table></div>
+    </div>`;
+
+  const html = overallHtml + managers.map(manager => {
     const momRow = state.mom.find(r => r.month === monthKey && r.manager === manager);
     if (!momRow) return '';
 
