@@ -196,6 +196,7 @@ td.r,th.r{text-align:right}
       <a onclick="goTo('bdeSection')">🏆 BDEs</a>
       <a onclick="goTo('qualitySection')">✅ Quality</a>
       <a onclick="goTo('trackerSection')">📅 Daily</a>
+      <a onclick="goTo('projectionSection')">🎯 WoW</a>
       <a onclick="goTo('reportSection')">🛠 Report</a>
       <a onclick="goTo('trendSection')">📈 Trend</a>
     </div>
@@ -448,7 +449,7 @@ function renderAll(months){
   const mMom=state.mom.filter(r=>r.month===state.month);
   const mBde=state.bde.filter(r=>r.month===state.month);
   renderKPI(mMom);renderMOM(mMom);renderPace(mMom);renderLeader(mBde);renderStatus(mMom);renderTrend(state.mom);
-  initTracker();initReport();
+  initTracker();initReport();initProjection();
 }
 
 function renderKPI(rows){
