@@ -643,10 +643,8 @@ function getWeeksForMonth(monthKey) {
   }
   return weeks;
 }
-
 function getWeeklyActual(sales, monthKey, manager, from, to) {
-  // Count entries in this week
-  const weekEntries = sales.filter(s => {
+  return sales.filter(s => {
     if (s.month !== monthKey) return false;
     if (manager && s.manager !== manager) return false;
     const str = String(s.date || '').trim();
@@ -659,23 +657,6 @@ function getWeeklyActual(sales, monthKey, manager, from, to) {
     }
     return day >= from && day <= to;
   }).length;
-
-  // Total entries for this manager (or ALL managers for Overall)
-  const totalMonthEntries = sales.filter(s => {
-    if (s.month !== monthKey) return false;
-    if (manager && s.manager !== manager) return false;
-    return true;
-  }).length;
-
-  // Get MOM achievement — sum ALL managers for Overall (null)
-  const momRows = manager
-    ? state.mom.filter(r => r.month === monthKey && r.manager === manager)
-    : state.mom.filter(r => r.month === monthKey);
-  const totalAchievement = momRows.reduce((a, r) => a + r.achievement, 0);
-
-  // Distribute proportionally
-  if (!totalMonthEntries || !totalAchievement) return 0;
-  return (weekEntries / totalMonthEntries) * totalAchievement;
 }
 function isWeekComplete(monthKey, toDay) {
   const [y, m] = monthKey.split('-').map(Number);
