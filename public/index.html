@@ -716,22 +716,23 @@ function renderProjection() {
   const overallMonthlyTarget = overallMomRows.reduce((a, r) => a + r.target, 0);
   const overallGoalTarget = overallMonthlyTarget * OVERALL_TARGET_PCT;
 
-  let overallCarry = 0;
-  const overallWeekData = weeks.map((w) => {
-    const baseTarget = totalWorkingDays > 0 ? (overallGoalTarget * w.workingDays / totalWorkingDays) : 0;
-    const weekTarget = baseTarget + overallCarry;
-    const complete = isWeekComplete(monthKey, w.to);
-    const inProgress = isWeekInProgress(monthKey, w.from, w.to);
-    const actual = (complete || inProgress) ? getWeeklyActual(state.sales, monthKey, null, w.from, w.to) : null;
-    let deficit = 0, status = 'upcoming';
-    if (complete) {
-      deficit = actual - weekTarget;
-      overallCarry = deficit < 0 ? Math.abs(deficit) : 0;
-      status = actual >= weekTarget ? 'ahead' : 'behind';
-    } else if (inProgress) { status = 'inprogress'; overallCarry = 0; }
-    else { overallCarry = 0; }
-    return { ...w, weekTarget, actual, deficit, status, complete, inProgress };
-  });
+let overallCumDeficit = 0;
+const overallWeekData = weeks.map((w, i) => {
+const futureWD = weeks.slice(i + 1).reduce((a, ww) => a + ww.workingDays, 0);
+const baseTarget = totalWorkingDays > 0 ? (overallGoalTarget * w.workingDays / totalWorkingDays) : 0;
+const deficitShare = overallCumDeficit * (w.workingDays / Math.max(1, w.workingDays + futureWD));
+const weekTarget = baseTarget + deficitShare;
+const complete = isWeekComplete(monthKey, w.to);
+const inProgress = isWeekInProgress(monthKey, w.from, w.to);
+const actual = (complete || inProgress) ? getWeeklyActual(state.sales, monthKey, null, w.from, w.to) : null;
+let deficit = 0, status = 'upcoming';
+if (complete) {
+deficit = actual - weekTarget;
+if (deficit < 0) overallCumDeficit += Math.abs(deficit);
+status = actual >= weekTarget ? 'ahead' : 'behind';
+} else if (inProgress) { status = 'inprogress'; }
+return { ...w, weekTarget, actual, deficit, status, complete, inProgress };
+});
 
   const overallTotalActual = overallWeekData.reduce((a, w) => a + (w.actual || 0), 0);
   const overallStatus = overallTotalActual >= overallGoalTarget ? 'good' : overallTotalActual >= overallGoalTarget * 0.75 ? 'warn' : 'bad';
@@ -792,32 +793,26 @@ function renderProjection() {
     const goalTarget = monthlyTarget * PROJ_TARGET_PCT[manager];
 
     // Build week data with deficit carry-forward
-    let carryDeficit = 0;
-    const weekData = weeks.map((w, i) => {
-      // Base weekly target proportional to working days
-      const baseTarget = totalWorkingDays > 0 ? (goalTarget * w.workingDays / totalWorkingDays) : 0;
-      // Add carry-forward deficit from previous weeks
-      const weekTarget = baseTarget + carryDeficit;
-
-      const complete = isWeekComplete(monthKey, w.to);
-      const inProgress = isWeekInProgress(monthKey, w.from, w.to);
-      const actual = (complete || inProgress) ? getWeeklyActual(state.sales, monthKey, manager, w.from, w.to) : null;
-
-      let deficit = 0;
-      let status = 'upcoming';
-      if (complete) {
-        deficit = actual - weekTarget; // negative = behind
-        carryDeficit = deficit < 0 ? Math.abs(deficit) : 0; // carry forward if behind
-        status = actual >= weekTarget ? 'ahead' : 'behind';
-      } else if (inProgress) {
-        status = 'inprogress';
-        carryDeficit = 0;
-      } else {
-        carryDeficit = 0;
-      }
-
-      return { ...w, baseTarget, weekTarget, actual, deficit, status, complete, inProgress };
-    });
+let cumDeficit = 0;
+const weekData = weeks.map((w, i) => {
+const futureWD = weeks.slice(i + 1).reduce((a, ww) => a + ww.workingDays, 0);
+const baseTarget = totalWorkingDays > 0 ? (goalTarget * w.workingDays / totalWorkingDays) : 0;
+const deficitShare = cumDeficit * (w.workingDays / Math.max(1, w.workingDays + futureWD));
+const weekTarget = baseTarget + deficitShare;
+const complete = isWeekComplete(monthKey, w.to);
+const inProgress = isWeekInProgress(monthKey, w.from, w.to);
+const actual = (complete || inProgress) ? getWeeklyActual(state.sales, monthKey, manager, w.from, w.to) : null;
+let deficit = 0;
+let status = 'upcoming';
+if (complete) {
+deficit = actual - weekTarget;
+if (deficit < 0) cumDeficit += Math.abs(deficit);
+status = actual >= weekTarget ? 'ahead' : 'behind';
+} else if (inProgress) {
+status = 'inprogress';
+}
+return { ...w, baseTarget, weekTarget, actual, deficit, status, complete, inProgress };
+});
 
     // Cumulative lines for chart
     const labels = weekData.map(w => w.label);
