@@ -621,8 +621,7 @@ function initTracker(){
 }
 
 // ── WoW Projection ───────────────────────────────────────────
-const PROJ_TARGET_PCT = { 'Azhaan': 0.70, 'Nazim': 1.00, 'Priyanka': 1.00 };
-
+const PROJ_TARGET_PCT = { 'Azhaan': 1.00, 'Nazim': 1.20, 'Priyanka': 1.20 };
 function getWorkingDaysInWeek(year, month, fromDay, toDay) {
   let count = 0;
   for (let d = fromDay; d <= toDay; d++) {
@@ -689,8 +688,8 @@ function renderProjection() {
   Object.values(projCharts).forEach(c => c.destroy());
   projCharts = {};
 
-  const OVERALL_TARGET_PCT = 0.70;
-  const allManagers = ['Azhaan', 'Nazim', 'Priyanka'];
+ const OVERALL_TARGET_PCT = 1.00;
+ const allManagers = ['Azhaan', 'Nazim', 'Priyanka'];
 
   // ── Overall section ──────────────────────────────────────
   const overallMomRows = allManagers.map(m => state.mom.find(r => r.month === monthKey && r.manager === m)).filter(Boolean);
@@ -744,7 +743,7 @@ return { ...w, weekTarget, actual, deficit, status, complete, inProgress };
         <div>
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink);letter-spacing:.05em">📊 Overall (Yogesh)</div>
           <div style="font-size:18px;font-weight:700;margin-top:2px">
-            ${fmtAch(overallTotalActual)} <span style="font-size:13px;color:var(--muted)">of ${overallGoalTarget.toFixed(1)} goal (${overallMonthlyTarget} target × 70%)</span>
+          ${fmtAch(overallTotalActual)} <span style="font-size:13px;color:var(--muted)">of ${overallGoalTarget.toFixed(1)} goal (${overallMonthlyTarget} target × ${(OVERALL_TARGET_PCT*100).toFixed(0)}%)</span>
           </div>
         </div>
         <div style="text-align:right">
